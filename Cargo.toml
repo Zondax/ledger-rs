@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Juan Leni <lenijuan@gmail.com>"]
 
 [dependencies]
+hidapi = "0.3"

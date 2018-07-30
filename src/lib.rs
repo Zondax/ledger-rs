@@ -1,7 +1,12 @@
 #[cfg(test)]
-mod tests {
+mod hidapi_checks {
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn retrieve_devices() {
+        extern crate hidapi;
+
+        let api = hidapi::HidApi::new().unwrap();
+        for device in &api.devices() {
+            println!("{:#?}", device);
+        }
     }
 }
