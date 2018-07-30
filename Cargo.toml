@@ -1,0 +1,6 @@
+[package]
+name = "ledger-rs"
+version = "0.1.0"
+authors = ["Juan Leni <lenijuan@gmail.com>"]
+
+[dependencies]
