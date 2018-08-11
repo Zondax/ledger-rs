@@ -1,6 +1,6 @@
 [package]
 name = "ledger"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Juan Leni <juan.leni@zondax.ch>"]
 description = "Library to exchange APDU with Ledger Nano S devices"
 homepage = "https://github.com/ZondaX/ledger-rs"

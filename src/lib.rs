@@ -27,7 +27,7 @@ const LEDGER_CHANNEL: u16 = 0x0101;
 const LEDGER_PACKET_SIZE: u8 = 64;
 
 #[derive(Debug)]
-struct ApduCommand {
+pub struct ApduCommand {
     pub cla: u8,
     pub ins: u8,
     pub p1: u8,
@@ -37,7 +37,7 @@ struct ApduCommand {
 }
 
 #[derive(Debug)]
-struct ApduAnswer {
+pub struct ApduAnswer {
     pub data: Vec<u8>,
     pub retcode: u16,
 }
@@ -142,7 +142,7 @@ fn read_apdu(device: &HidDevice, channel: u16, apdu_answer: &mut Vec<u8>) -> Res
     }
 }
 
-fn exchange(command: ApduCommand) -> Result<ApduAnswer, &'static str>
+pub fn exchange(command: ApduCommand) -> Result<ApduAnswer, &'static str>
 {
     extern crate hidapi;
 
