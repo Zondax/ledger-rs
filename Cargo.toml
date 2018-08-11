@@ -1,7 +1,20 @@
 [package]
-name = "ledger-rs"
-version = "0.1.0"
-authors = ["Juan Leni <lenijuan@gmail.com>"]
+name = "ledger"
+version = "0.0.1"
+authors = ["Juan Leni <juan.leni@zondax.ch>"]
+description = "Library to exchange APDU with Ledger Nano S devices"
+homepage = "https://github.com/ZondaX/ledger-rs"
+repository = "https://github.com/ZondaX/ledger-rs"
+readme = "README.md"
+
+license = "Apache-2.0"
+keywords = ["ledger", "nano", "blue", "apdu"]
+
+[lib]
+name = "ledger"
+
+[dependencies]
+byteorder = "1.2.4"
 
 [dependencies.hidapi]
 version = "0.5"
