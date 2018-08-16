@@ -183,8 +183,8 @@ mod integration_tests {
                      device.path,
                      device.vendor_id,
                      device.usage_page,
-                     device.manufacturer_string.clone().unwrap(),
-                     device.product_string.clone().unwrap());
+                     device.manufacturer_string.clone().unwrap_or_default(),
+                     device.product_string.clone().unwrap_or_default());
         }
     }
 
