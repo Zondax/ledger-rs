@@ -16,10 +16,17 @@
 extern crate hidapi;
 extern crate byteorder;
 
+#[macro_use]
+extern crate nix;
+
 use std::ffi::CString;
-use hidapi::HidDevice;
+use std::ffi::CStr;
 use std::io::Cursor;
+use std::fs::File;
 use byteorder::{BigEndian, ReadBytesExt};
+use hidapi::HidApi;
+use hidapi::HidDevice;
+
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0x0032;
@@ -171,20 +178,55 @@ pub fn exchange(command: ApduCommand) -> Result<ApduAnswer, &'static str>
     Ok(ApduAnswer { data: apdu_data.to_vec(), retcode: apdu_retcode })
 }
 
+const SPI_IOC_MAGIC: u8 = b'k';
+// Defined in linux/spi/spidev.h
+const SPI_IOC_TYPE_MODE: u8 = 1;
+ioctl_read!(spi_read_mode, SPI_IOC_MAGIC, SPI_IOC_TYPE_MODE, u8);
+
+fn get_usage_page(api: &HidApi, device_path: &CStr) -> Result<u32, &'static str>
+{
+    let file_name = device_path.to_str().expect("invalid path");
+    match File::open(file_name) {
+        Err(message) => (),
+        Ok(mut file) => {
+            let mut buffer = [0u8; 500];
+
+            // use ioctl to retrieve a report
+//            match file.read(&mut buffer) {
+//                Err(message) => {
+//                    println!("{:#?}", &message);
+//                }
+//                Ok(size) => { }
+//            }
+        }
+    }
+
+    Ok(0)
+}
+
 #[cfg(test)]
 mod integration_tests {
     #[test]
     fn list_all_devices() {
         extern crate hidapi;
+        use get_usage_page;
+        use LEDGER_VID;
 
         let api = hidapi::HidApi::new().expect("Could not open HID API");
-        for device in api.devices() {
-            println!("{:#?} - {:#?}/{:#?} {:#} {:#}",
-                     device.path,
-                     device.vendor_id,
-                     device.usage_page,
-                     device.manufacturer_string.clone().unwrap_or_default(),
-                     device.product_string.clone().unwrap_or_default());
+        for device_info in api.devices() {
+            // TODO: In Linux usage page is not valid
+
+            println!("{:#?} - {:#x}/{:#x} {:#} {:#}",
+                     device_info.path,
+                     device_info.vendor_id,
+                     device_info.usage_page,
+                     device_info.manufacturer_string.clone().unwrap_or_default(),
+                     device_info.product_string.clone().unwrap_or_default()
+            );
+
+            if device_info.vendor_id == LEDGER_VID {
+                let usage_page = get_usage_page(&api, &device_info.path);
+            }
         }
     }
 
