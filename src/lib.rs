@@ -165,7 +165,7 @@ pub fn exchange(command: ApduCommand) -> Result<ApduAnswer, &'static str>
         return Err("Invalid response");
     }
 
-    let apdu_retcode = (answer[answer.len() - 2] as u16) << 8 + answer[answer.len() - 1];
+    let apdu_retcode = ((answer[answer.len() - 2] as u16) << 8) + answer[answer.len() - 1] as u16;
     let apdu_data = &answer[..answer.len() - 2];
 
     Ok(ApduAnswer { data: apdu_data.to_vec(), retcode: apdu_retcode })
