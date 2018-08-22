@@ -204,7 +204,9 @@ fn write_apdu(device: &HidDevice, channel: u16, apdu_command: &[u8]) -> Result<i
 
             match result
                 {
-                    Ok(size) => if size != buffer.len() {
+                    Ok(size) => if size < buffer.len() {
+                        println!("{:#?}", size);
+                        println!("{:#?}", buffer.len());
                         return Err(Box::from("USB write error. Could not send whole message"))
                     },
                     Err(_x) => return Err(Box::from("USB write error"))
@@ -234,12 +236,13 @@ fn read_apdu(device: &HidDevice, channel: u16, apdu_answer: &mut Vec<u8>) -> Res
         let rcv_tag = rdr.read_u8().unwrap();
         let rcv_seq_idx = rdr.read_u16::<BigEndian>().unwrap();
 
-        if rcv_channel != channel {
-            return Err(Box::from("Invalid channel"));
-        }
-        if rcv_tag != 0x05u8 {
-            return Err(Box::from("Invalid tag"));
-        }
+        // TODO: Check why windows returns a different channel/tag
+//        if rcv_channel != channel {
+//            return Err(Box::from(format!("Invalid channel: {}!={}", rcv_channel, channel )));
+//        }
+//        if rcv_tag != 0x05u8 {
+//            return Err(Box::from("Invalid tag"));
+//        }
         if rcv_seq_idx != sequence_idx {
             return Err(Box::from("Invalid sequence idx"));
         }
