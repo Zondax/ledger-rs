@@ -22,10 +22,14 @@ extern crate nix;
 #[cfg(target_os = "linux")]
 extern crate libc;
 
+#[cfg(target_os = "linux")]
 use std::{
-    mem,
-    ffi::CString,
     ffi::CStr,
+    mem,
+};
+
+use std::{
+    ffi::CString,
     io::Cursor,
 };
 use byteorder::{BigEndian, ReadBytesExt};
@@ -43,12 +47,6 @@ pub struct HidrawReportDescriptor {
     size: u32,
     value: [u8; HID_MAX_DESCRIPTOR_SIZE],
 }
-
-// #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
-// #define HIDIOCGRDESC		_IOR('H', 0x02, struct HidrawReportDescriptor)
-ioctl_read!(hid_read_descr_size, b'H', 0x01, libc::c_int);
-ioctl_read!(hid_read_descr, b'H', 0x02, HidrawReportDescriptor);
-
 
 #[derive(Debug)]
 pub struct ApduCommand {
@@ -115,6 +113,11 @@ fn find_ledger_device_path() -> Result<CString, Box<std::error::Error>>
 #[cfg(target_os = "linux")]
 fn get_usage_page(device_path: &CStr) -> Result<u16, Box<std::error::Error>>
 {
+// #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
+// #define HIDIOCGRDESC		_IOR('H', 0x02, struct HidrawReportDescriptor)
+    ioctl_read!(hid_read_descr_size, b'H', 0x01, libc::c_int);
+    ioctl_read!(hid_read_descr, b'H', 0x02, HidrawReportDescriptor);
+
     use std::os::unix::{fs::OpenOptionsExt, io::AsRawFd};
     use std::fs::OpenOptions;
 
