@@ -15,17 +15,29 @@
 ********************************************************************************/
 #[macro_use]
 extern crate quick_error;
+#[macro_use]
+extern crate cfg_if;
 extern crate hidapi;
 extern crate byteorder;
 
-//#[cfg(target_os = "linux")]
-extern crate nix;
+cfg_if! {
+    if #[cfg(target_os = "linux")] {
+        #[macro_use]
+        extern crate nix;
+        extern crate libc;
+        use std::{ffi::CStr, mem};
+    } else {
+        // Mock the type in other target_os
+        mod nix {
+            quick_error! {
+                #[derive(Debug)]
+                pub enum Error {
+                }
+            }
+        }
+    }
+}
 
-#[cfg(target_os = "linux")]
-extern crate libc;
-
-#[cfg(target_os = "linux")]
-use std::{ffi::CStr, mem};
 use std::{
     ffi::CString,
     io::Cursor,
@@ -44,6 +56,12 @@ const LEDGER_TIMEOUT: i32 = 10000000;
 quick_error! {
     #[derive(Debug)]
     pub enum Error {
+        Ioctl ( err: nix::Error ) {
+            from()
+            description("ioctl error")
+            display("ioctl error: {}", err)
+            cause(err)
+        }
         DeviceNotFound{
             description("Could not find a ledger device")
         }
@@ -64,12 +82,6 @@ quick_error! {
             display("hid error: {}", err)
             // cause(err)
         }
-        Ioctl ( err: nix::Error ) {
-            from()
-            description("ioctl error")
-            display("ioctl error: {}", err)
-            cause(err)
-        }
         Unexpected ( err: std::str::Utf8Error ) {
             from()
             description("unexpected error")
@@ -77,14 +89,6 @@ quick_error! {
             cause(err)
         }
     }
-}
-
-const HID_MAX_DESCRIPTOR_SIZE: usize = 4096;
-
-#[repr(C)]
-pub struct HidrawReportDescriptor {
-    size: u32,
-    value: [u8; HID_MAX_DESCRIPTOR_SIZE],
 }
 
 #[derive(Debug)]
@@ -279,74 +283,84 @@ impl LedgerApp {
     }
 }
 
-#[cfg(target_os = "linux")]
-fn get_usage_page(device_path: &CStr) -> Result<u16, Error>
-{
-    // #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
-    // #define HIDIOCGRDESC		_IOR('H', 0x02, struct HidrawReportDescriptor)
-    ioctl_read!(hid_read_descr_size, b'H', 0x01, libc::c_int);
-    ioctl_read!(hid_read_descr, b'H', 0x02, HidrawReportDescriptor);
+cfg_if! {
+if #[cfg(target_os = "linux")] {
+    const HID_MAX_DESCRIPTOR_SIZE: usize = 4096;
 
-    use std::os::unix::{fs::OpenOptionsExt, io::AsRawFd};
-    use std::fs::OpenOptions;
-
-    let file_name = device_path.to_str()?;
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .custom_flags(libc::O_NONBLOCK)
-        .open(file_name)?;
-
-    let mut desc_size = 0;
-
-    unsafe {
-        let fd = file.as_raw_fd();
-        let mut desc_raw: HidrawReportDescriptor = mem::uninitialized();
-
-        hid_read_descr_size(fd, &mut desc_size)?;
-        desc_raw.size = desc_size as u32;
-        hid_read_descr(fd, &mut desc_raw)?;
-
-        let data = &desc_raw.value[..desc_raw.size as usize];
-
-        let mut data_len;
-        let mut key_size;
-        let mut i = 0 as usize;
-
-        while i < desc_size as usize {
-            let key = data[i];
-            let key_cmd = key & 0xFC;
-
-            if key & 0xF0 == 0xF0 {
-                data_len = 0;
-                key_size = 3;
-                if i + 1 < desc_size as usize {
-                    data_len = data[i + 1];
-                }
-            } else {
-                key_size = 1;
-                data_len = key & 0x03;
-                if data_len == 3 {
-                    data_len = 4;
-                }
-            }
-
-            if key_cmd == 0x04 {
-                // println!("{:02x?} {:02x?} {:02x?}", data, data_len, i);
-                let usage_page = match data_len {
-                    1 => data[i + 1] as u16,
-                    2 => (data[i + 2] as u16 * 256 + data[i + 1] as u16),
-                    _ => 0 as u16
-                };
-
-                return Ok(usage_page);
-            }
-
-            i += (data_len + key_size) as usize;
-        }
+    #[repr(C)]
+    pub struct HidrawReportDescriptor {
+        size: u32,
+        value: [u8; HID_MAX_DESCRIPTOR_SIZE],
     }
-    Ok(0)
-}
+
+    fn get_usage_page(device_path: &CStr) -> Result<u16, Error>
+    {
+        // #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
+        // #define HIDIOCGRDESC		_IOR('H', 0x02, struct HidrawReportDescriptor)
+        ioctl_read!(hid_read_descr_size, b'H', 0x01, libc::c_int);
+        ioctl_read!(hid_read_descr, b'H', 0x02, HidrawReportDescriptor);
+
+        use std::os::unix::{fs::OpenOptionsExt, io::AsRawFd};
+        use std::fs::OpenOptions;
+
+        let file_name = device_path.to_str()?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .custom_flags(libc::O_NONBLOCK)
+            .open(file_name)?;
+
+        let mut desc_size = 0;
+
+        unsafe {
+            let fd = file.as_raw_fd();
+            let mut desc_raw: HidrawReportDescriptor = mem::uninitialized();
+
+            hid_read_descr_size(fd, &mut desc_size)?;
+            desc_raw.size = desc_size as u32;
+            hid_read_descr(fd, &mut desc_raw)?;
+
+            let data = &desc_raw.value[..desc_raw.size as usize];
+
+            let mut data_len;
+            let mut key_size;
+            let mut i = 0 as usize;
+
+            while i < desc_size as usize {
+                let key = data[i];
+                let key_cmd = key & 0xFC;
+
+                if key & 0xF0 == 0xF0 {
+                    data_len = 0;
+                    key_size = 3;
+                    if i + 1 < desc_size as usize {
+                        data_len = data[i + 1];
+                    }
+                } else {
+                    key_size = 1;
+                    data_len = key & 0x03;
+                    if data_len == 3 {
+                        data_len = 4;
+                    }
+                }
+
+                if key_cmd == 0x04 {
+                    // println!("{:02x?} {:02x?} {:02x?}", data, data_len, i);
+                    let usage_page = match data_len {
+                        1 => data[i + 1] as u16,
+                        2 => (data[i + 2] as u16 * 256 + data[i + 1] as u16),
+                        _ => 0 as u16
+                    };
+
+                    return Ok(usage_page);
+                }
+
+                i += (data_len + key_size) as usize;
+            }
+        }
+        Ok(0)
+    }
+}}
 
 #[cfg(test)]
 mod integration_tests {
