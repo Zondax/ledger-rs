@@ -18,8 +18,7 @@ extern crate quick_error;
 extern crate hidapi;
 extern crate byteorder;
 
-#[cfg(target_os = "linux")]
-#[macro_use]
+//#[cfg(target_os = "linux")]
 extern crate nix;
 
 #[cfg(target_os = "linux")]
@@ -129,8 +128,7 @@ impl LedgerApp {
                 return Ok(device.path.clone());
             }
         }
-
-        Err(Box::from("Could not find Ledger Nano S device"))
+        Err(Error::DeviceNotFound)
     }
 
     #[cfg(target_os = "linux")]
