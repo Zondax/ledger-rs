@@ -1,7 +1,20 @@
-use failure::{Compat, Error};
+#[macro_use]
+extern crate quick_error;
 
-#[derive(Debug, Fail)]
-pub enum LedgerError {
-    #[fail(display = "ledger error: {}", message)]
-    HidApiError { message: String },
+quick_error! {
+    #[derive(Debug)]
+    enum LedgerError {
+        DeviceNotFound{
+            description("Could not find a ledger device")
+        }
+        Comm(additional_description: String) {
+            description("Communication Error: {}", additional_description)
+        }
+        APDU(additional_description: String) {
+            description("APDU Error: {}", additional_description)
+        }
+        Unknown(additional_description: String) {
+            description("Unknown Error: {}", additional_description)
+        }
+    }
 }
