@@ -104,6 +104,10 @@ pub struct ApduAnswer {
     pub retcode: u16,
 }
 
+pub struct LedgerApp {
+    device: HidDevice
+}
+
 impl ApduCommand {
     fn serialize(&self) -> Vec<u8>
     {
@@ -113,37 +117,168 @@ impl ApduCommand {
     }
 }
 
-#[cfg(not(target_os = "linux"))]
-fn find_ledger_device_path() -> Result<CString, LedgerError>
-{
-    extern crate hidapi;
+impl LedgerApp {
+    #[cfg(not(target_os = "linux"))]
+    fn find_ledger_device_path() -> Result<CString, Error>
+    {
+        extern crate hidapi;
 
-    let api = hidapi::HidApi::new()?;
-    for device in api.devices() {
-        if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
-            return Ok(device.path.clone());
-        }
-    }
-
-    Err(Box::from("Could not find Ledger Nano S device"))
-}
-
-
-#[cfg(target_os = "linux")]
-fn find_ledger_device_path() -> Result<CString, Error>
-{
-    extern crate hidapi;
-
-    let api = hidapi::HidApi::new()?;
-    for device in api.devices() {
-        if device.vendor_id == LEDGER_VID {
-            let usage_page = get_usage_page(&device.path)?;
-            if usage_page == LEDGER_USAGE_PAGE {
+        let api = hidapi::HidApi::new()?;
+        for device in api.devices() {
+            if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
                 return Ok(device.path.clone());
             }
         }
+
+        Err(Box::from("Could not find Ledger Nano S device"))
     }
-    Err(Error::DeviceNotFound)
+
+    #[cfg(target_os = "linux")]
+    fn find_ledger_device_path() -> Result<CString, Error>
+    {
+        extern crate hidapi;
+
+        let api = hidapi::HidApi::new()?;
+        for device in api.devices() {
+            if device.vendor_id == LEDGER_VID {
+                let usage_page = get_usage_page(&device.path)?;
+                if usage_page == LEDGER_USAGE_PAGE {
+                    return Ok(device.path.clone());
+                }
+            }
+        }
+        Err(Error::DeviceNotFound)
+    }
+
+    pub fn connect() -> Result<Self, Error>
+    {
+        let device_path = LedgerApp::find_ledger_device_path()?;
+        // println!("Device Path :\t{:?}", device_path);
+
+        // Open device
+        let api = hidapi::HidApi::new()?;
+
+        let device = api.open_path(&device_path)?;
+        let ledger = LedgerApp { device };
+
+        Ok(ledger)
+    }
+
+    fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, Error>
+    {
+        let command_length = apdu_command.len() as usize;
+        let mut in_data = Vec::with_capacity(command_length + 2);
+        in_data.push(((command_length >> 8) & 0xFF) as u8);
+        in_data.push(((command_length >> 0) & 0xFF) as u8);
+        in_data.extend_from_slice(&apdu_command);
+
+        let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
+        buffer[0] = ((channel >> 8) & 0xFF) as u8;         // channel big endian
+        buffer[1] = ((channel >> 0) & 0xFF) as u8;         // channel big endian
+        buffer[2] = 0x05u8;
+
+        let mut sequence_idx = 0u16;
+
+        for chunk in in_data.chunks((LEDGER_PACKET_SIZE - 5) as usize)
+            {
+                buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8;         // sequence_idx big endian
+                buffer[4] = ((sequence_idx >> 0) & 0xFF) as u8;         // sequence_idx big endian
+                buffer[5..5 + chunk.len()].copy_from_slice(chunk);
+
+                let result = self.device.write(&buffer);
+
+                match result
+                    {
+                        Ok(size) => if size < buffer.len() {
+//                        println!("{:#?}", size);
+//                        println!("{:#?}", buffer.len());
+                            return Err(Error::Comm("USB write error. Could not send whole message"));
+                        },
+                        Err(x) => return Err(Error::Hid(x))
+                    }
+
+                sequence_idx += 1;
+            }
+        Ok(1)
+    }
+
+    fn read_apdu(&self, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, Error>
+    {
+        let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
+        let mut sequence_idx = 0u16;
+        let mut expected_apdu_len = 0usize;
+
+        loop {
+            let res = self.device.read_timeout(&mut buffer, LEDGER_TIMEOUT)?;
+
+            if (sequence_idx == 0 && res < 7) || res < 5 {
+                return Err(Error::Comm("Read error. Incomplete header"));
+            }
+
+            let mut rdr = Cursor::new(&buffer);
+
+            let _rcv_channel = rdr.read_u16::<BigEndian>()?;
+            let _rcv_tag = rdr.read_u8()?;
+            let rcv_seq_idx = rdr.read_u16::<BigEndian>()?;
+
+            // TODO: Check why windows returns a different channel/tag
+//        if rcv_channel != channel {
+//            return Err(Box::from(format!("Invalid channel: {}!={}", rcv_channel, channel )));
+//        }
+//        if rcv_tag != 0x05u8 {
+//            return Err(Box::from("Invalid tag"));
+//        }
+
+            if rcv_seq_idx != sequence_idx {
+                return Err(Error::Comm("Invalid sequence idx"));
+            }
+
+            if rcv_seq_idx == 0 {
+                expected_apdu_len = rdr.read_u16::<BigEndian>()? as usize;
+            }
+
+            let available: usize = buffer.len() - rdr.position() as usize;
+            let missing: usize = expected_apdu_len - apdu_answer.len();
+            let end_p = rdr.position() as usize + std::cmp::min(available, missing);
+
+            apdu_answer.extend_from_slice(&buffer[rdr.position() as usize..end_p]);
+
+            if apdu_answer.len() >= expected_apdu_len {
+                return Ok(apdu_answer.len());
+            }
+
+            sequence_idx += 1;
+        }
+    }
+
+    pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, Error>
+    {
+        extern crate hidapi;
+
+        println!(">> {:X?}", &command.serialize());
+        self.write_apdu(LEDGER_CHANNEL, &command.serialize())?;
+
+        let mut answer: Vec<u8> = Vec::with_capacity(256);
+        let res = self.read_apdu(LEDGER_CHANNEL, &mut answer)?;
+
+        println!("<< {:X?}", answer);
+
+        if res < 2 {
+            return Err(Error::Comm("response was too short"));
+        }
+
+        let apdu_retcode = ((answer[answer.len() - 2] as u16) << 8) + answer[answer.len() - 1] as u16;
+        let apdu_data = &answer[..answer.len() - 2];
+
+        // TODO: match the return code and send back a cleaner enum
+
+        Ok(ApduAnswer
+            {
+                data: apdu_data.to_vec(),
+                retcode: apdu_retcode,
+            }
+        )
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -215,144 +350,13 @@ fn get_usage_page(device_path: &CStr) -> Result<u16, Error>
     Ok(0)
 }
 
-fn write_apdu(device: &HidDevice, channel: u16, apdu_command: &[u8]) -> Result<i32, Error>
-{
-    let command_length = apdu_command.len() as usize;
-    let mut in_data = Vec::with_capacity(command_length + 2);
-    in_data.push(((command_length >> 8) & 0xFF) as u8);
-    in_data.push(((command_length >> 0) & 0xFF) as u8);
-    in_data.extend_from_slice(&apdu_command);
-
-    let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
-    buffer[0] = ((channel >> 8) & 0xFF) as u8;         // channel big endian
-    buffer[1] = ((channel >> 0) & 0xFF) as u8;         // channel big endian
-    buffer[2] = 0x05u8;
-
-    let mut sequence_idx = 0u16;
-
-    for chunk in in_data.chunks((LEDGER_PACKET_SIZE - 5) as usize)
-        {
-            buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8;         // sequence_idx big endian
-            buffer[4] = ((sequence_idx >> 0) & 0xFF) as u8;         // sequence_idx big endian
-            buffer[5..5 + chunk.len()].copy_from_slice(chunk);
-
-            let result = device.write(&buffer);
-
-            match result
-                {
-                    Ok(size) => if size < buffer.len() {
-//                        println!("{:#?}", size);
-//                        println!("{:#?}", buffer.len());
-                        return Err(Error::Comm("USB write error. Could not send whole message"));
-                    },
-                    Err(x) => return Err(Error::Hid(x))
-                }
-
-            sequence_idx += 1;
-        }
-    Ok(1)
-}
-
-fn read_apdu(device: &HidDevice, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, Error>
-{
-    let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
-    let mut sequence_idx = 0u16;
-    let mut expected_apdu_len = 0usize;
-
-    loop {
-        let res = device.read_timeout(&mut buffer, LEDGER_TIMEOUT)?;
-
-        if (sequence_idx == 0 && res < 7) || res < 5 {
-            return Err(Error::Comm("Read error. Incomplete header"));
-        }
-
-        let mut rdr = Cursor::new(&buffer);
-
-        let _rcv_channel = rdr.read_u16::<BigEndian>()?;
-        let _rcv_tag = rdr.read_u8()?;
-        let rcv_seq_idx = rdr.read_u16::<BigEndian>()?;
-
-        // TODO: Check why windows returns a different channel/tag
-//        if rcv_channel != channel {
-//            return Err(Box::from(format!("Invalid channel: {}!={}", rcv_channel, channel )));
-//        }
-//        if rcv_tag != 0x05u8 {
-//            return Err(Box::from("Invalid tag"));
-//        }
-
-        if rcv_seq_idx != sequence_idx {
-            return Err(Error::Comm("Invalid sequence idx"));
-        }
-
-        if rcv_seq_idx == 0 {
-            expected_apdu_len = rdr.read_u16::<BigEndian>()? as usize;
-        }
-
-        let available: usize = buffer.len() - rdr.position() as usize;
-        let missing: usize = expected_apdu_len - apdu_answer.len();
-        let end_p = rdr.position() as usize + std::cmp::min(available, missing);
-
-        apdu_answer.extend_from_slice(&buffer[rdr.position() as usize..end_p]);
-
-        if apdu_answer.len() >= expected_apdu_len {
-            return Ok(apdu_answer.len());
-        }
-
-        sequence_idx += 1;
-    }
-}
-
-pub fn exchange(command: ApduCommand) -> Result<ApduAnswer, Error>
-{
-    extern crate hidapi;
-
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
-    // TODO: keep device in memory so reconnections are not necessary
-    // Get device path
-    let device_path = find_ledger_device_path()?;
-    // println!("Device Path :\t{:?}", device_path);
-
-    // Open device
-    let api = hidapi::HidApi::new()?;
-    let device = api.open_path(&device_path)?;
-    ////////////////////////////////
-    ////////////////////////////////
-    ////////////////////////////////
-
-    println!(">> {:X?}", &command.serialize());
-    write_apdu(&device, LEDGER_CHANNEL,&command.serialize())?;
-
-    let mut answer: Vec<u8> = Vec::with_capacity(256);
-    let res = read_apdu(&device, LEDGER_CHANNEL, &mut answer)?;
-
-    println!("<< {:X?}", answer);
-
-    if res < 2 {
-        return Err(Error::Comm("response was too short"));
-    }
-
-    let apdu_retcode = ((answer[answer.len() - 2] as u16) << 8) + answer[answer.len() - 1] as u16;
-    let apdu_data = &answer[..answer.len() - 2];
-
-    // TODO: match the return code and send back a cleaner enum
-
-    Ok(ApduAnswer
-        {
-            data: apdu_data.to_vec(),
-            retcode: apdu_retcode,
-        }
-    )
-}
-
 #[cfg(test)]
 mod integration_tests {
     #[test]
     fn list_all_devices() {
         extern crate hidapi;
 
-        let api = hidapi::HidApi::new()?;
+        let api = hidapi::HidApi::new().unwrap();
         for device_info in api.devices() {
             println!("{:#?} - {:#x}/{:#x} {:#} {:#}",
                      device_info.path,
@@ -366,8 +370,8 @@ mod integration_tests {
 
     #[test]
     fn test_ledger_device_path() {
-        use find_ledger_device_path;
-        let ledger_path = find_ledger_device_path().unwrap();
+        use LedgerApp;
+        let ledger_path = LedgerApp::find_ledger_device_path().unwrap();
         println!("{:?}", ledger_path);
     }
 
@@ -395,8 +399,10 @@ mod integration_tests {
 
     #[test]
     fn test_exchange() {
-        use exchange;
+        use LedgerApp;
         use ApduCommand;
+
+        let ledger = LedgerApp::connect().unwrap();
 
         let command = ApduCommand {
             cla: 0x56,
@@ -406,7 +412,8 @@ mod integration_tests {
             length: 0,
             data: Vec::new(),
         };
-        let result = exchange(command).unwrap();
+
+        let result = ledger.exchange(command).unwrap();
         println!("{:?}", result);
     }
 }
