@@ -17,6 +17,9 @@
 extern crate quick_error;
 #[macro_use]
 extern crate cfg_if;
+#[macro_use]
+extern crate lazy_static;
+
 extern crate hidapi;
 extern crate byteorder;
 
@@ -45,6 +48,8 @@ use std::{
 
 use byteorder::{BigEndian, ReadBytesExt};
 use hidapi::HidDevice;
+use std::sync::{Arc, Weak, Mutex};
+use std::cell::RefCell;
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
@@ -107,8 +112,41 @@ pub struct ApduAnswer {
     pub retcode: u16,
 }
 
+pub struct HidApiWrapper {
+    _api : RefCell<Weak<Mutex<hidapi::HidApi>>>
+}
+
 pub struct LedgerApp {
+    api_mutex: Arc<Mutex<hidapi::HidApi>>,
     device: HidDevice
+}
+
+unsafe impl Send for HidApiWrapper {}
+
+lazy_static! {
+    static ref HIDAPIWRAPPER: Arc<Mutex<HidApiWrapper>> = Arc::new(Mutex::new(HidApiWrapper::new()));
+}
+
+impl HidApiWrapper {
+    fn new() -> Self {
+        return HidApiWrapper{
+            _api: RefCell::new(Weak::new())
+        }
+    }
+
+    fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, Error>
+    {
+        let tmp = self._api.borrow().upgrade();
+        if tmp.is_some() {
+            let api_mutex = tmp.unwrap();
+            return Ok(api_mutex);
+        }
+
+        let hidapi = hidapi::HidApi::new()?;
+        let tmp = Arc::new(Mutex::new(hidapi));
+        self._api.replace(Arc::downgrade(&tmp));
+        Ok(tmp)
+    }
 }
 
 impl ApduCommand {
@@ -122,11 +160,8 @@ impl ApduCommand {
 
 impl LedgerApp {
     #[cfg(not(target_os = "linux"))]
-    fn find_ledger_device_path() -> Result<CString, Error>
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error>
     {
-        extern crate hidapi;
-
-        let api = hidapi::HidApi::new()?;
         for device in api.devices() {
             if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
                 return Ok(device.path.clone());
@@ -136,11 +171,8 @@ impl LedgerApp {
     }
 
     #[cfg(target_os = "linux")]
-    fn find_ledger_device_path() -> Result<CString, Error>
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error>
     {
-        extern crate hidapi;
-
-        let api = hidapi::HidApi::new()?;
         for device in api.devices() {
             if device.vendor_id == LEDGER_VID {
                 let usage_page = get_usage_page(&device.path)?;
@@ -152,16 +184,19 @@ impl LedgerApp {
         Err(Error::DeviceNotFound)
     }
 
-    pub fn connect() -> Result<Self, Error>
+    pub fn new() -> Result<Self, Error>
     {
-        let device_path = LedgerApp::find_ledger_device_path()?;
-        // println!("Device Path :\t{:?}", device_path);
+        let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
+        let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
+        let api = api_mutex.lock().expect("Could not lock");
 
-        // Open device
-        let api = hidapi::HidApi::new()?;
-
+        let device_path = LedgerApp::find_ledger_device_path(&api)?;
         let device = api.open_path(&device_path)?;
-        let ledger = LedgerApp { device };
+
+        let ledger = LedgerApp {
+            device: device,
+            api_mutex: api_mutex.clone()
+        };
 
         Ok(ledger)
     }
@@ -366,9 +401,12 @@ if #[cfg(target_os = "linux")] {
 mod integration_tests {
     #[test]
     fn list_all_devices() {
-        extern crate hidapi;
+        use HIDAPIWRAPPER;
 
-        let api = hidapi::HidApi::new().unwrap();
+        let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
+        let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
+        let api = api_mutex.lock().expect("Could not lock");
+
         for device_info in api.devices() {
             println!("{:#?} - {:#x}/{:#x} {:#} {:#}",
                      device_info.path,
@@ -381,14 +419,21 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_ledger_device_path() {
+    fn ledger_device_path() {
         use LedgerApp;
-        let ledger_path = LedgerApp::find_ledger_device_path().unwrap();
+
+        use HIDAPIWRAPPER;
+
+        let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
+        let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
+        let api = api_mutex.lock().expect("Could not lock");
+
+        let ledger_path = LedgerApp::find_ledger_device_path(&api).unwrap();
         println!("{:?}", ledger_path);
     }
 
     #[test]
-    fn test_serialize() {
+    fn serialize() {
         use ApduCommand;
 
         let data = vec![0, 0, 0, 1, 0, 0, 0, 1];
@@ -410,11 +455,11 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_exchange() {
+    fn exchange() {
         use LedgerApp;
         use ApduCommand;
 
-        let ledger = LedgerApp::connect().unwrap();
+        let ledger = LedgerApp::new().unwrap();
 
         let command = ApduCommand {
             cla: 0x56,

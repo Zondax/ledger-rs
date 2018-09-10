@@ -1,6 +1,6 @@
 [package]
 name = "ledger"
-version = "0.0.7"
+version = "0.0.8"
 authors = ["ZondaX GmbH <info@zondax.ch>"]
 description = "Library to exchange APDU with Ledger Nano S devices"
 homepage = "https://github.com/ZondaX/ledger-rs"
@@ -18,6 +18,7 @@ byteorder = "1.2.4"
 libc = "0.2.43"
 quick-error = "1.2.2"
 cfg-if = "0.1"
+lazy_static = "1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = "0.11.0"
