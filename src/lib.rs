@@ -116,6 +116,7 @@ pub struct HidApiWrapper {
     _api : RefCell<Weak<Mutex<hidapi::HidApi>>>
 }
 
+#[allow(dead_code)]
 pub struct LedgerApp {
     api_mutex: Arc<Mutex<hidapi::HidApi>>,
     device: HidDevice
