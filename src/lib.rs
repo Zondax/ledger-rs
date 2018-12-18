@@ -119,7 +119,8 @@ pub struct HidApiWrapper {
 #[allow(dead_code)]
 pub struct LedgerApp {
     api_mutex: Arc<Mutex<hidapi::HidApi>>,
-    device: HidDevice
+    device: HidDevice,
+    device_mutex: Mutex<i32>
 }
 
 unsafe impl Send for HidApiWrapper {}
@@ -196,7 +197,8 @@ impl LedgerApp {
 
         let ledger = LedgerApp {
             device: device,
-            api_mutex: api_mutex.clone()
+            device_mutex: Mutex::new(0),
+            api_mutex: api_mutex.clone(),
         };
 
         Ok(ledger)
@@ -292,6 +294,8 @@ impl LedgerApp {
     pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, Error>
     {
         extern crate hidapi;
+
+        let _guard = self.device_mutex.lock().unwrap();
 
         println!(">> {:X?}", &command.serialize());
         self.write_apdu(LEDGER_CHANNEL, &command.serialize())?;
