@@ -230,8 +230,6 @@ impl LedgerApp {
                 match result
                     {
                         Ok(size) => if size < buffer.len() {
-//                        println!("{:#?}", size);
-//                        println!("{:#?}", buffer.len());
                             return Err(Error::Comm("USB write error. Could not send whole message"));
                         },
                         Err(x) => return Err(Error::Hid(x))
@@ -297,13 +295,10 @@ impl LedgerApp {
 
         let _guard = self.device_mutex.lock().unwrap();
 
-        println!(">> {:X?}", &command.serialize());
         self.write_apdu(LEDGER_CHANNEL, &command.serialize())?;
 
         let mut answer: Vec<u8> = Vec::with_capacity(256);
         let res = self.read_apdu(LEDGER_CHANNEL, &mut answer)?;
-
-        println!("<< {:X?}", answer);
 
         if res < 2 {
             return Err(Error::Comm("response was too short"));
@@ -385,7 +380,6 @@ if #[cfg(target_os = "linux")] {
                 }
 
                 if key_cmd == 0x04 {
-                    // println!("{:02x?} {:02x?} {:02x?}", data, data_len, i);
                     let usage_page = match data_len {
                         1 => data[i + 1] as u16,
                         2 => (data[i + 2] as u16 * 256 + data[i + 1] as u16),
