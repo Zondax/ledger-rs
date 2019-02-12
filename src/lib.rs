@@ -56,7 +56,7 @@ const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
 const LEDGER_CHANNEL: u16 = 0x0101;
 const LEDGER_PACKET_SIZE: u8 = 64;
 
-const LEDGER_TIMEOUT: i32 = 10000000;
+const LEDGER_TIMEOUT: i32 = 10_000_000;
 
 quick_error! {
     #[derive(Debug)]
@@ -113,14 +113,14 @@ pub struct ApduAnswer {
 }
 
 pub struct HidApiWrapper {
-    _api : RefCell<Weak<Mutex<hidapi::HidApi>>>
+    _api: RefCell<Weak<Mutex<hidapi::HidApi>>>
 }
 
 #[allow(dead_code)]
 pub struct LedgerApp {
     api_mutex: Arc<Mutex<hidapi::HidApi>>,
     device: HidDevice,
-    device_mutex: Mutex<i32>
+    device_mutex: Mutex<i32>,
 }
 
 unsafe impl Send for HidApiWrapper {}
@@ -131,7 +131,7 @@ lazy_static! {
 
 impl HidApiWrapper {
     fn new() -> Self {
-        return HidApiWrapper{
+        HidApiWrapper {
             _api: RefCell::new(Weak::new())
         }
     }
@@ -196,7 +196,7 @@ impl LedgerApp {
         let device = api.open_path(&device_path)?;
 
         let ledger = LedgerApp {
-            device: device,
+            device,
             device_mutex: Mutex::new(0),
             api_mutex: api_mutex.clone(),
         };
@@ -209,34 +209,29 @@ impl LedgerApp {
         let command_length = apdu_command.len() as usize;
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
-        in_data.push(((command_length >> 0) & 0xFF) as u8);
+        in_data.push((command_length & 0xFF) as u8);
         in_data.extend_from_slice(&apdu_command);
 
         let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
         buffer[0] = ((channel >> 8) & 0xFF) as u8;         // channel big endian
-        buffer[1] = ((channel >> 0) & 0xFF) as u8;         // channel big endian
+        buffer[1] = (channel & 0xFF) as u8;         // channel big endian
         buffer[2] = 0x05u8;
 
-        let mut sequence_idx = 0u16;
+        for (sequence_idx, chunk) in in_data.chunks((LEDGER_PACKET_SIZE - 5) as usize).enumerate() {
+            buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8;         // sequence_idx big endian
+            buffer[4] = (sequence_idx & 0xFF) as u8;         // sequence_idx big endian
+            buffer[5..5 + chunk.len()].copy_from_slice(chunk);
 
-        for chunk in in_data.chunks((LEDGER_PACKET_SIZE - 5) as usize)
-            {
-                buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8;         // sequence_idx big endian
-                buffer[4] = ((sequence_idx >> 0) & 0xFF) as u8;         // sequence_idx big endian
-                buffer[5..5 + chunk.len()].copy_from_slice(chunk);
+            let result = self.device.write(&buffer);
 
-                let result = self.device.write(&buffer);
-
-                match result
-                    {
-                        Ok(size) => if size < buffer.len() {
-                            return Err(Error::Comm("USB write error. Could not send whole message"));
-                        },
-                        Err(x) => return Err(Error::Hid(x))
-                    }
-
-                sequence_idx += 1;
-            }
+            match result
+                {
+                    Ok(size) => if size < buffer.len() {
+                        return Err(Error::Comm("USB write error. Could not send whole message"));
+                    },
+                    Err(x) => return Err(Error::Hid(x))
+                }
+        }
         Ok(1)
     }
 
@@ -304,7 +299,7 @@ impl LedgerApp {
             return Err(Error::Comm("response was too short"));
         }
 
-        let apdu_retcode = ((answer[answer.len() - 2] as u16) << 8) + answer[answer.len() - 1] as u16;
+        let apdu_retcode = (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
         let apdu_data = &answer[..answer.len() - 2];
 
         // TODO: match the return code and send back a cleaner enum
@@ -315,6 +310,11 @@ impl LedgerApp {
                 retcode: apdu_retcode,
             }
         )
+    }
+
+    pub fn close()
+    {
+        extern crate hidapi;
     }
 }
 
@@ -381,8 +381,8 @@ if #[cfg(target_os = "linux")] {
 
                 if key_cmd == 0x04 {
                     let usage_page = match data_len {
-                        1 => data[i + 1] as u16,
-                        2 => (data[i + 2] as u16 * 256 + data[i + 1] as u16),
+                        1 => u16::from(data[i + 1]),
+                        2 => (u16::from(data[i + 2] )* 256 + u16::from(data[i + 1])),
                         _ => 0 as u16
                     };
 
@@ -443,7 +443,7 @@ mod integration_tests {
             p1: 0x00,
             p2: 0x00,
             length: data.len() as u8,
-            data: data,
+            data,
         };
 
         let serialized_command = command.serialize();
