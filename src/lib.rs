@@ -75,6 +75,10 @@ quick_error! {
             description(descr)
             display("Communication Error: {}", descr)
         }
+        Apdu(descr: &'static str) {
+            description(descr)
+            display("APDU: {}", descr)
+        }
         Io ( err: std::io::Error ) {
             from()
             description("io error")
@@ -157,6 +161,25 @@ impl ApduCommand {
         let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
         v.extend(&self.data);
         v
+    }
+}
+
+pub fn map_apdu_error(retcode: u16) -> Error {
+    match retcode {
+        0x6400 => Error::Apdu("[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)"),
+        0x6700 => Error::Apdu("[APDU_CODE_WRONG_LENGTH] Wrong length"),
+        0x6982 => Error::Apdu("[APDU_CODE_EMPTY_BUFFER]"),
+        0x6983 => Error::Apdu("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
+        0x6984 => Error::Apdu("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)"),
+        0x6985 => Error::Apdu("[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied"),
+        0x6986 => Error::Apdu("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)"),
+        0x6A80 => Error::Apdu("[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect"),
+        0x6B00 => Error::Apdu("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
+        0x6D00 => Error::Apdu("[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid"),
+        0x6E00 => Error::Apdu("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
+        0x6F00 => Error::Apdu("[APDU_CODE_UNKNOWN]"),
+        0x6F01 => Error::Apdu("[APDU_CODE_SIGN_VERIFY_ERROR]"),
+        _ => Error::Apdu("[APDU_ERROR] Unknown")
     }
 }
 
@@ -302,7 +325,9 @@ impl LedgerApp {
         let apdu_retcode = (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
         let apdu_data = &answer[..answer.len() - 2];
 
-        // TODO: match the return code and send back a cleaner enum
+        if apdu_retcode != 0x9000 {
+            return Err(map_apdu_error(apdu_retcode));
+        }
 
         Ok(ApduAnswer
             {
