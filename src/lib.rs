@@ -70,7 +70,6 @@ quick_error! {
         DeviceNotFound{
             description("Could not find a ledger device")
         }
-        // TODO: Extend error messages to handle APDU error codes
         Comm(descr: &'static str) {
             description(descr)
             display("Communication Error: {}", descr)
@@ -125,6 +124,7 @@ pub struct LedgerApp {
     api_mutex: Arc<Mutex<hidapi::HidApi>>,
     device: HidDevice,
     device_mutex: Mutex<i32>,
+    logging: bool,
 }
 
 unsafe impl Send for HidApiWrapper {}
@@ -222,9 +222,14 @@ impl LedgerApp {
             device,
             device_mutex: Mutex::new(0),
             api_mutex: api_mutex.clone(),
+            logging: false
         };
 
         Ok(ledger)
+    }
+
+    pub fn set_logging(&mut self, val : bool) {
+        self.logging = val;
     }
 
     fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, Error>
@@ -244,6 +249,10 @@ impl LedgerApp {
             buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8;         // sequence_idx big endian
             buffer[4] = (sequence_idx & 0xFF) as u8;         // sequence_idx big endian
             buffer[5..5 + chunk.len()].copy_from_slice(chunk);
+
+            if self.logging {
+                println!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
+            }
 
             let result = self.device.write(&buffer);
 
@@ -297,7 +306,13 @@ impl LedgerApp {
             let missing: usize = expected_apdu_len - apdu_answer.len();
             let end_p = rdr.position() as usize + std::cmp::min(available, missing);
 
-            apdu_answer.extend_from_slice(&buffer[rdr.position() as usize..end_p]);
+            let new_chunk =  &buffer[rdr.position() as usize..end_p];
+
+            if self.logging {
+                println!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            }
+
+            apdu_answer.extend_from_slice(new_chunk);
 
             if apdu_answer.len() >= expected_apdu_len {
                 return Ok(apdu_answer.len());
@@ -432,10 +447,12 @@ mod integration_tests {
         let api = api_mutex.lock().expect("Could not lock");
 
         for device_info in api.devices() {
-            println!("{:#?} - {:#x}/{:#x} {:#} {:#}",
+            println!("{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
                      device_info.path,
                      device_info.vendor_id,
+                     device_info.product_id,
                      device_info.usage_page,
+                     device_info.interface_number,
                      device_info.manufacturer_string.clone().unwrap_or_default(),
                      device_info.product_string.clone().unwrap_or_default()
             );
@@ -452,6 +469,7 @@ mod integration_tests {
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
 
+        // TODO: Extend to discover two devices
         let ledger_path = LedgerApp::find_ledger_device_path(&api).unwrap();
         println!("{:?}", ledger_path);
     }
@@ -483,7 +501,8 @@ mod integration_tests {
         use LedgerApp;
         use ApduCommand;
 
-        let ledger = LedgerApp::new().unwrap();
+        let mut ledger = LedgerApp::new().unwrap();
+        ledger.set_logging(true);
 
         let command = ApduCommand {
             cla: 0x56,
