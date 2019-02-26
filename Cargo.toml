@@ -1,6 +1,6 @@
 [package]
 name = "ledger"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["ZondaX GmbH <info@zondax.ch>"]
 description = "Library to exchange APDU with Ledger Nano S devices"
 homepage = "https://github.com/zondax/ledger-rs"
@@ -25,6 +25,6 @@ hex="0.3.2"
 nix = "0.13.0"
 
 [dependencies.hidapi]
-version = "0.5"
+version = "0.5.1"
 default-features = false
 features=["linux-static-hidraw"]

@@ -222,13 +222,17 @@ impl LedgerApp {
             device,
             device_mutex: Mutex::new(0),
             api_mutex: api_mutex.clone(),
-            logging: false
+            logging: false,
         };
 
         Ok(ledger)
     }
 
-    pub fn set_logging(&mut self, val : bool) {
+    pub fn logging(&self) -> bool {
+        return self.logging;
+    }
+
+    pub fn set_logging(&mut self, val: bool) {
         self.logging = val;
     }
 
@@ -306,7 +310,7 @@ impl LedgerApp {
             let missing: usize = expected_apdu_len - apdu_answer.len();
             let end_p = rdr.position() as usize + std::cmp::min(available, missing);
 
-            let new_chunk =  &buffer[rdr.position() as usize..end_p];
+            let new_chunk = &buffer[rdr.position() as usize..end_p];
 
             if self.logging {
                 println!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
