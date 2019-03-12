@@ -20,8 +20,8 @@ extern crate cfg_if;
 #[macro_use]
 extern crate lazy_static;
 
-extern crate hidapi;
 extern crate byteorder;
+extern crate hidapi;
 
 cfg_if! {
     if #[cfg(target_os = "linux")] {
@@ -41,15 +41,12 @@ cfg_if! {
     }
 }
 
-use std::{
-    ffi::CString,
-    io::Cursor,
-};
+use std::{ffi::CString, io::Cursor};
 
 use byteorder::{BigEndian, ReadBytesExt};
 use hidapi::HidDevice;
-use std::sync::{Arc, Weak, Mutex};
 use std::cell::RefCell;
+use std::sync::{Arc, Mutex, Weak};
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
@@ -116,7 +113,7 @@ pub struct ApduAnswer {
 }
 
 pub struct HidApiWrapper {
-    _api: RefCell<Weak<Mutex<hidapi::HidApi>>>
+    _api: RefCell<Weak<Mutex<hidapi::HidApi>>>,
 }
 
 #[allow(dead_code)]
@@ -130,18 +127,18 @@ pub struct LedgerApp {
 unsafe impl Send for HidApiWrapper {}
 
 lazy_static! {
-    static ref HIDAPIWRAPPER: Arc<Mutex<HidApiWrapper>> = Arc::new(Mutex::new(HidApiWrapper::new()));
+    static ref HIDAPIWRAPPER: Arc<Mutex<HidApiWrapper>> =
+        Arc::new(Mutex::new(HidApiWrapper::new()));
 }
 
 impl HidApiWrapper {
     fn new() -> Self {
         HidApiWrapper {
-            _api: RefCell::new(Weak::new())
+            _api: RefCell::new(Weak::new()),
         }
     }
 
-    fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, Error>
-    {
+    fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, Error> {
         let tmp = self._api.borrow().upgrade();
         if tmp.is_some() {
             let api_mutex = tmp.unwrap();
@@ -156,8 +153,7 @@ impl HidApiWrapper {
 }
 
 impl ApduCommand {
-    fn serialize(&self) -> Vec<u8>
-    {
+    fn serialize(&self) -> Vec<u8> {
         let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
         v.extend(&self.data);
         v
@@ -166,27 +162,36 @@ impl ApduCommand {
 
 pub fn map_apdu_error(retcode: u16) -> Error {
     match retcode {
-        0x6400 => Error::Apdu("[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)"),
+        0x6400 => {
+            Error::Apdu("[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)")
+        }
         0x6700 => Error::Apdu("[APDU_CODE_WRONG_LENGTH] Wrong length"),
         0x6982 => Error::Apdu("[APDU_CODE_EMPTY_BUFFER]"),
         0x6983 => Error::Apdu("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
         0x6984 => Error::Apdu("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)"),
-        0x6985 => Error::Apdu("[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied"),
-        0x6986 => Error::Apdu("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)"),
-        0x6A80 => Error::Apdu("[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect"),
+        0x6985 => {
+            Error::Apdu("[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied")
+        }
+        0x6986 => {
+            Error::Apdu("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)")
+        }
+        0x6A80 => {
+            Error::Apdu("[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect")
+        }
         0x6B00 => Error::Apdu("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
-        0x6D00 => Error::Apdu("[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid"),
+        0x6D00 => {
+            Error::Apdu("[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid")
+        }
         0x6E00 => Error::Apdu("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
         0x6F00 => Error::Apdu("[APDU_CODE_UNKNOWN]"),
         0x6F01 => Error::Apdu("[APDU_CODE_SIGN_VERIFY_ERROR]"),
-        _ => Error::Apdu("[APDU_ERROR] Unknown")
+        _ => Error::Apdu("[APDU_ERROR] Unknown"),
     }
 }
 
 impl LedgerApp {
     #[cfg(not(target_os = "linux"))]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error>
-    {
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error> {
         for device in api.devices() {
             if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
                 return Ok(device.path.clone());
@@ -196,8 +201,7 @@ impl LedgerApp {
     }
 
     #[cfg(target_os = "linux")]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error>
-    {
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error> {
         for device in api.devices() {
             if device.vendor_id == LEDGER_VID {
                 let usage_page = get_usage_page(&device.path)?;
@@ -209,8 +213,7 @@ impl LedgerApp {
         Err(Error::DeviceNotFound)
     }
 
-    pub fn new() -> Result<Self, Error>
-    {
+    pub fn new() -> Result<Self, Error> {
         let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
@@ -229,15 +232,14 @@ impl LedgerApp {
     }
 
     pub fn logging(&self) -> bool {
-        return self.logging;
+        self.logging
     }
 
     pub fn set_logging(&mut self, val: bool) {
         self.logging = val;
     }
 
-    fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, Error>
-    {
+    fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, Error> {
         let command_length = apdu_command.len() as usize;
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
@@ -245,13 +247,16 @@ impl LedgerApp {
         in_data.extend_from_slice(&apdu_command);
 
         let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
-        buffer[0] = ((channel >> 8) & 0xFF) as u8;         // channel big endian
-        buffer[1] = (channel & 0xFF) as u8;         // channel big endian
+        buffer[0] = ((channel >> 8) & 0xFF) as u8; // channel big endian
+        buffer[1] = (channel & 0xFF) as u8; // channel big endian
         buffer[2] = 0x05u8;
 
-        for (sequence_idx, chunk) in in_data.chunks((LEDGER_PACKET_SIZE - 5) as usize).enumerate() {
-            buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8;         // sequence_idx big endian
-            buffer[4] = (sequence_idx & 0xFF) as u8;         // sequence_idx big endian
+        for (sequence_idx, chunk) in in_data
+            .chunks((LEDGER_PACKET_SIZE - 5) as usize)
+            .enumerate()
+        {
+            buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8; // sequence_idx big endian
+            buffer[4] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
             buffer[5..5 + chunk.len()].copy_from_slice(chunk);
 
             if self.logging {
@@ -260,19 +265,19 @@ impl LedgerApp {
 
             let result = self.device.write(&buffer);
 
-            match result
-                {
-                    Ok(size) => if size < buffer.len() {
+            match result {
+                Ok(size) => {
+                    if size < buffer.len() {
                         return Err(Error::Comm("USB write error. Could not send whole message"));
-                    },
-                    Err(x) => return Err(Error::Hid(x))
+                    }
                 }
+                Err(x) => return Err(Error::Hid(x)),
+            }
         }
         Ok(1)
     }
 
-    fn read_apdu(&self, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, Error>
-    {
+    fn read_apdu(&self, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, Error> {
         let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
         let mut sequence_idx = 0u16;
         let mut expected_apdu_len = 0usize;
@@ -291,12 +296,12 @@ impl LedgerApp {
             let rcv_seq_idx = rdr.read_u16::<BigEndian>()?;
 
             // TODO: Check why windows returns a different channel/tag
-//        if rcv_channel != channel {
-//            return Err(Box::from(format!("Invalid channel: {}!={}", rcv_channel, channel )));
-//        }
-//        if rcv_tag != 0x05u8 {
-//            return Err(Box::from("Invalid tag"));
-//        }
+            //        if rcv_channel != channel {
+            //            return Err(Box::from(format!("Invalid channel: {}!={}", rcv_channel, channel )));
+            //        }
+            //        if rcv_tag != 0x05u8 {
+            //            return Err(Box::from("Invalid tag"));
+            //        }
 
             if rcv_seq_idx != sequence_idx {
                 return Err(Error::Comm("Invalid sequence idx"));
@@ -326,8 +331,7 @@ impl LedgerApp {
         }
     }
 
-    pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, Error>
-    {
+    pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, Error> {
         extern crate hidapi;
 
         let _guard = self.device_mutex.lock().unwrap();
@@ -341,23 +345,21 @@ impl LedgerApp {
             return Err(Error::Comm("response was too short"));
         }
 
-        let apdu_retcode = (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
+        let apdu_retcode =
+            (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
         let apdu_data = &answer[..answer.len() - 2];
 
         if apdu_retcode != 0x9000 {
             return Err(map_apdu_error(apdu_retcode));
         }
 
-        Ok(ApduAnswer
-            {
-                data: apdu_data.to_vec(),
-                retcode: apdu_retcode,
-            }
-        )
+        Ok(ApduAnswer {
+            data: apdu_data.to_vec(),
+            retcode: apdu_retcode,
+        })
     }
 
-    pub fn close()
-    {
+    pub fn close() {
         extern crate hidapi;
     }
 }
@@ -451,14 +453,15 @@ mod integration_tests {
         let api = api_mutex.lock().expect("Could not lock");
 
         for device_info in api.devices() {
-            println!("{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
-                     device_info.path,
-                     device_info.vendor_id,
-                     device_info.product_id,
-                     device_info.usage_page,
-                     device_info.interface_number,
-                     device_info.manufacturer_string.clone().unwrap_or_default(),
-                     device_info.product_string.clone().unwrap_or_default()
+            println!(
+                "{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
+                device_info.path,
+                device_info.vendor_id,
+                device_info.product_id,
+                device_info.usage_page,
+                device_info.interface_number,
+                device_info.manufacturer_string.clone().unwrap_or_default(),
+                device_info.product_string.clone().unwrap_or_default()
             );
         }
     }
@@ -502,8 +505,8 @@ mod integration_tests {
 
     #[test]
     fn exchange() {
-        use LedgerApp;
         use ApduCommand;
+        use LedgerApp;
 
         let mut ledger = LedgerApp::new().unwrap();
         ledger.set_logging(true);
