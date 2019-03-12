@@ -1,5 +1,5 @@
 # ledger-rs
 
-Communication library between Rust and Ledger Nano S devices
+[![CircleCI](https://circleci.com/gh/ZondaX/ledger-rs.svg?style=svg)](https://circleci.com/gh/ZondaX/ledger-rs)
 
-WORK IN PROGRESS
+Communication library between Rust and Ledger Nano S devices
