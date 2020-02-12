@@ -13,15 +13,13 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#[macro_use]
-extern crate quick_error;
-#[macro_use]
-extern crate cfg_if;
-#[macro_use]
-extern crate lazy_static;
+use cfg_if::cfg_if;
+use lazy_static::lazy_static;
+use thiserror::Error;
 
-extern crate byteorder;
-extern crate hidapi;
+#[cfg(test)]
+#[macro_use]
+extern crate serial_test;
 
 cfg_if! {
     if #[cfg(target_os = "linux")] {
@@ -55,45 +53,30 @@ const LEDGER_PACKET_SIZE: u8 = 64;
 
 const LEDGER_TIMEOUT: i32 = 10_000_000;
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum Error {
-        Ioctl ( err: nix::Error ) {
-            from()
-            description("ioctl error")
-            display("ioctl error: {}", err)
-            cause(err)
-        }
-        DeviceNotFound{
-            description("Could not find a ledger device")
-        }
-        Comm(descr: &'static str) {
-            description(descr)
-            display("Communication Error: {}", descr)
-        }
-        Apdu(descr: &'static str) {
-            description(descr)
-            display("APDU: {}", descr)
-        }
-        Io ( err: std::io::Error ) {
-            from()
-            description("io error")
-            display("I/O error: {}", err)
-            cause(err)
-        }
-        Hid ( err: hidapi::HidError ) {
-            from()
-            description("hid error")
-            display("hid error: {}", err)
-            // cause(err)
-        }
-        Unexpected ( err: std::str::Utf8Error ) {
-            from()
-            description("unexpected error")
-            display("unexpected error: {}", err)
-            cause(err)
-        }
-    }
+#[derive(Error, Debug)]
+pub enum LedgerError {
+    /// Device not found error
+    #[error("Ledger device not found")]
+    DeviceNotFound,
+    /// Communication error
+    #[error("Ledger device: communication error `{0}`")]
+    Comm(&'static str),
+    /// APDU error
+    #[error("Ledger device: APDU error `{0}`")]
+    Apdu(&'static str),
+
+    /// Ioctl error
+    #[error("Ledger device: Ioctl error")]
+    Ioctl(#[from] nix::Error),
+    /// i/o error
+    #[error("Ledger device: i/o error")]
+    Io(#[from] std::io::Error),
+    /// HID error
+    #[error("Ledger device: Io error")]
+    Hid(#[from] hidapi::HidError),
+    /// UT8F error
+    #[error("Ledger device: UTF8 error")]
+    UTF8(#[from] std::str::Utf8Error),
 }
 
 #[derive(Debug)]
@@ -138,7 +121,7 @@ impl HidApiWrapper {
         }
     }
 
-    fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, Error> {
+    fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, LedgerError> {
         let tmp = self._api.borrow().upgrade();
         if tmp.is_some() {
             let api_mutex = tmp.unwrap();
@@ -160,48 +143,50 @@ impl ApduCommand {
     }
 }
 
-pub fn map_apdu_error(retcode: u16) -> Error {
+pub fn map_apdu_error(retcode: u16) -> LedgerError {
     match retcode {
-        0x6400 => {
-            Error::Apdu("[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)")
+        0x6400 => LedgerError::Apdu(
+            "[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)",
+        ),
+        0x6700 => LedgerError::Apdu("[APDU_CODE_WRONG_LENGTH] Wrong length"),
+        0x6982 => LedgerError::Apdu("[APDU_CODE_EMPTY_BUFFER]"),
+        0x6983 => LedgerError::Apdu("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
+        0x6984 => {
+            LedgerError::Apdu("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)")
         }
-        0x6700 => Error::Apdu("[APDU_CODE_WRONG_LENGTH] Wrong length"),
-        0x6982 => Error::Apdu("[APDU_CODE_EMPTY_BUFFER]"),
-        0x6983 => Error::Apdu("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
-        0x6984 => Error::Apdu("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)"),
-        0x6985 => {
-            Error::Apdu("[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied")
-        }
+        0x6985 => LedgerError::Apdu(
+            "[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied",
+        ),
         0x6986 => {
-            Error::Apdu("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)")
+            LedgerError::Apdu("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)")
         }
-        0x6A80 => {
-            Error::Apdu("[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect")
-        }
-        0x6B00 => Error::Apdu("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
-        0x6D00 => {
-            Error::Apdu("[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid")
-        }
-        0x6E00 => Error::Apdu("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
-        0x6F00 => Error::Apdu("[APDU_CODE_UNKNOWN]"),
-        0x6F01 => Error::Apdu("[APDU_CODE_SIGN_VERIFY_ERROR]"),
-        _ => Error::Apdu("[APDU_ERROR] Unknown"),
+        0x6A80 => LedgerError::Apdu(
+            "[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect",
+        ),
+        0x6B00 => LedgerError::Apdu("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
+        0x6D00 => LedgerError::Apdu(
+            "[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid",
+        ),
+        0x6E00 => LedgerError::Apdu("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
+        0x6F00 => LedgerError::Apdu("[APDU_CODE_UNKNOWN]"),
+        0x6F01 => LedgerError::Apdu("[APDU_CODE_SIGN_VERIFY_ERROR]"),
+        _ => LedgerError::Apdu("[APDU_ERROR] Unknown"),
     }
 }
 
 impl LedgerApp {
     #[cfg(not(target_os = "linux"))]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error> {
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
         for device in api.devices() {
             if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
                 return Ok(device.path.clone());
             }
         }
-        Err(Error::DeviceNotFound)
+        Err(LedgerError::DeviceNotFound)
     }
 
     #[cfg(target_os = "linux")]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, Error> {
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
         for device in api.devices() {
             if device.vendor_id == LEDGER_VID {
                 let usage_page = get_usage_page(&device.path)?;
@@ -210,10 +195,10 @@ impl LedgerApp {
                 }
             }
         }
-        Err(Error::DeviceNotFound)
+        Err(LedgerError::DeviceNotFound)
     }
 
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Self, LedgerError> {
         let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
@@ -239,7 +224,7 @@ impl LedgerApp {
         self.logging = val;
     }
 
-    fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, Error> {
+    fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, LedgerError> {
         let command_length = apdu_command.len() as usize;
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
@@ -268,16 +253,18 @@ impl LedgerApp {
             match result {
                 Ok(size) => {
                     if size < buffer.len() {
-                        return Err(Error::Comm("USB write error. Could not send whole message"));
+                        return Err(LedgerError::Comm(
+                            "USB write error. Could not send whole message",
+                        ));
                     }
                 }
-                Err(x) => return Err(Error::Hid(x)),
+                Err(x) => return Err(LedgerError::Hid(x)),
             }
         }
         Ok(1)
     }
 
-    fn read_apdu(&self, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, Error> {
+    fn read_apdu(&self, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, LedgerError> {
         let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
         let mut sequence_idx = 0u16;
         let mut expected_apdu_len = 0usize;
@@ -286,7 +273,7 @@ impl LedgerApp {
             let res = self.device.read_timeout(&mut buffer, LEDGER_TIMEOUT)?;
 
             if (sequence_idx == 0 && res < 7) || res < 5 {
-                return Err(Error::Comm("Read error. Incomplete header"));
+                return Err(LedgerError::Comm("Read error. Incomplete header"));
             }
 
             let mut rdr = Cursor::new(&buffer);
@@ -304,7 +291,7 @@ impl LedgerApp {
             //        }
 
             if rcv_seq_idx != sequence_idx {
-                return Err(Error::Comm("Invalid sequence idx"));
+                return Err(LedgerError::Comm("Invalid sequence idx"));
             }
 
             if rcv_seq_idx == 0 {
@@ -331,7 +318,7 @@ impl LedgerApp {
         }
     }
 
-    pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, Error> {
+    pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, LedgerError> {
         extern crate hidapi;
 
         let _guard = self.device_mutex.lock().unwrap();
@@ -342,7 +329,7 @@ impl LedgerApp {
         let res = self.read_apdu(LEDGER_CHANNEL, &mut answer)?;
 
         if res < 2 {
-            return Err(Error::Comm("response was too short"));
+            return Err(LedgerError::Comm("response was too short"));
         }
 
         let apdu_retcode =
@@ -374,7 +361,7 @@ if #[cfg(target_os = "linux")] {
         value: [u8; HID_MAX_DESCRIPTOR_SIZE],
     }
 
-    fn get_usage_page(device_path: &CStr) -> Result<u16, Error>
+    fn get_usage_page(device_path: &CStr) -> Result<u16, LedgerError>
     {
         // #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
         // #define HIDIOCGRDESC		_IOR('H', 0x02, struct HidrawReportDescriptor)
@@ -444,10 +431,12 @@ if #[cfg(target_os = "linux")] {
 
 #[cfg(test)]
 mod integration_tests {
-    #[test]
-    fn list_all_devices() {
-        use HIDAPIWRAPPER;
+    use crate::{ApduCommand, LedgerApp, HIDAPIWRAPPER};
+    use serial_test;
 
+    #[test]
+    #[serial]
+    fn list_all_devices() {
         let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
@@ -467,11 +456,8 @@ mod integration_tests {
     }
 
     #[test]
+    #[serial]
     fn ledger_device_path() {
-        use LedgerApp;
-
-        use HIDAPIWRAPPER;
-
         let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
@@ -482,9 +468,8 @@ mod integration_tests {
     }
 
     #[test]
+    #[serial]
     fn serialize() {
-        use ApduCommand;
-
         let data = vec![0, 0, 0, 1, 0, 0, 0, 1];
 
         let command = ApduCommand {
@@ -504,10 +489,8 @@ mod integration_tests {
     }
 
     #[test]
+    #[serial]
     fn exchange() {
-        use ApduCommand;
-        use LedgerApp;
-
         let mut ledger = LedgerApp::new().unwrap();
         ledger.set_logging(true);
 
