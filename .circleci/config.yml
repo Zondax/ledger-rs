@@ -3,32 +3,10 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/rust:latest
+      - image: zondax/rust-ci:latest
     steps:
       - checkout
       - run: sudo apt-get install libudev-dev libusb-1.0-0-dev
-      - run:
-          name: build
-          command: |
-            rustc --version
-            cargo --version
-            cargo build
-      - run:
-          name: build --release
-          command: |
-            rustc --version
-            cargo --version
-            cargo build --release
-
-  checks:
-    docker:
-      - image: circleci/rust:latest
-    steps:
-      - checkout
-      - run: sudo apt-get install libudev-dev libusb-1.0-0-dev
-      - run: rustup component add rustfmt
-      - run: rustup component add clippy
-      - run: cargo install --force cargo-audit
       - run:
           name: rustfmt
           command: |
@@ -44,10 +22,22 @@ jobs:
           command: |
             cargo audit --version
             cargo audit
+      - run:
+          name: build
+          command: |
+            rustc --version
+            cargo --version
+            cargo build
+      - run:
+          name: build --release
+          command: |
+            rustc --version
+            cargo --version
+            cargo build --release
 
   tests:
     docker:
-      - image: circleci/rust:latest
+      - image: zondax/rust-ci:latest
     steps:
       - checkout
       - run: sudo apt-get install libudev-dev libusb-1.0-0-dev
@@ -63,5 +53,4 @@ workflows:
   build_all:
     jobs:
       - build
-      - checks
 #      - tests
