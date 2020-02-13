@@ -382,11 +382,14 @@ if #[cfg(target_os = "linux")] {
 
         unsafe {
             let fd = file.as_raw_fd();
-            let mut desc_raw: HidrawReportDescriptor = mem::uninitialized();
 
             hid_read_descr_size(fd, &mut desc_size)?;
-            desc_raw.size = desc_size as u32;
-            hid_read_descr(fd, &mut desc_raw)?;
+            let mut desc_raw_uninit = mem::MaybeUninit::<HidrawReportDescriptor>::new(HidrawReportDescriptor {
+                size: desc_size as u32,
+                value: [0u8; 4096]
+            });
+            hid_read_descr(fd, desc_raw_uninit.as_mut_ptr())?;
+            let desc_raw = desc_raw_uninit.assume_init();
 
             let data = &desc_raw.value[..desc_raw.size as usize];
 
@@ -463,7 +466,8 @@ mod integration_tests {
         let api = api_mutex.lock().expect("Could not lock");
 
         // TODO: Extend to discover two devices
-        let ledger_path = LedgerApp::find_ledger_device_path(&api).unwrap();
+        let ledger_path =
+            LedgerApp::find_ledger_device_path(&api).expect("Could not find a device");
         println!("{:?}", ledger_path);
     }
 
@@ -491,7 +495,7 @@ mod integration_tests {
     #[test]
     #[serial]
     fn exchange() {
-        let mut ledger = LedgerApp::new().unwrap();
+        let mut ledger = LedgerApp::new().expect("Could not get a device");
         ledger.set_logging(true);
 
         let command = ApduCommand {
@@ -503,7 +507,7 @@ mod integration_tests {
             data: Vec::new(),
         };
 
-        let result = ledger.exchange(command).unwrap();
+        let result = ledger.exchange(command).expect("Error during exchange");
         println!("{:?}", result);
     }
 }
