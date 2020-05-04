@@ -17,6 +17,8 @@ use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use thiserror::Error;
 
+use ledger_generic::{ApduAnswer, ApduCommand};
+
 #[cfg(test)]
 #[macro_use]
 extern crate serial_test;
@@ -79,22 +81,6 @@ pub enum LedgerError {
     UTF8(#[from] std::str::Utf8Error),
 }
 
-#[derive(Debug)]
-pub struct ApduCommand {
-    pub cla: u8,
-    pub ins: u8,
-    pub p1: u8,
-    pub p2: u8,
-    pub length: u8,
-    pub data: Vec<u8>,
-}
-
-#[derive(Debug)]
-pub struct ApduAnswer {
-    pub data: Vec<u8>,
-    pub retcode: u16,
-}
-
 pub struct HidApiWrapper {
     _api: RefCell<Weak<Mutex<hidapi::HidApi>>>,
 }
@@ -132,14 +118,6 @@ impl HidApiWrapper {
         let tmp = Arc::new(Mutex::new(hidapi));
         self._api.replace(Arc::downgrade(&tmp));
         Ok(tmp)
-    }
-}
-
-impl ApduCommand {
-    fn serialize(&self) -> Vec<u8> {
-        let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
-        v.extend(&self.data);
-        v
     }
 }
 
