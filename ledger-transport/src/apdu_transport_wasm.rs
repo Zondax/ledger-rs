@@ -46,7 +46,9 @@ impl ApduTransport {
             .exchange_apdu(&apdu_command.serialize());
 
         let future = JsFuture::from(promise);
-        let result = future.await.map_err(|_e| TransportError::APDUExchangeError)?;
+        let result = future
+            .await
+            .map_err(|_e| TransportError::APDUExchangeError)?;
         let answer = js_sys::Uint8Array::new(&result).to_vec();
 
         // if the reply is < 2 bytes, this is a serious error
