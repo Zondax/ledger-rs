@@ -13,6 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use std::convert::Into;
 
 #[derive(Debug)]
 pub struct ApduCommand {
@@ -38,6 +39,26 @@ impl ApduCommand {
     }
 }
 
+impl ApduAnswer {
+    pub fn from_answer(answer: Vec<u8>) -> ApduAnswer {
+        let apdu_retcode =
+            (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
+        let apdu_data = &answer[..answer.len() - 2];
+
+        return ApduAnswer {
+            data: apdu_data.to_vec(),
+            retcode: apdu_retcode,
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
 pub enum APDUErrorCodes {
     NoError = 0x9000,
+}
+
+impl Into<u16> for APDUErrorCodes {
+    fn into(self) -> u16 {
+        self as u16
+    }
 }
