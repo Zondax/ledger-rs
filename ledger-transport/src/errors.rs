@@ -13,29 +13,16 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-//! Support library for Filecoin Ledger Nano S/X apps
 
-#![deny(warnings, trivial_casts, trivial_numeric_casts)]
-#![deny(unused_import_braces, unused_qualifications)]
-#![deny(missing_docs)]
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-extern crate byteorder;
+// FIXME: We need cleaner errors here
 
-pub use ledger_generic::{ApduAnswer, ApduCommand, APDUErrorCodes};
-
-/// APDU Errors
-pub mod errors;
-
-#[cfg(target_arch = "wasm32")]
-/// APDU Transport wrapper for JS/WASM transports
-pub mod apdu_transport_wasm;
-
-#[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{ApduTransport, TransportWrapperTrait};
-
-#[cfg(not(target_arch = "wasm32"))]
-/// APDU Errors
-pub mod apdu_transport_native;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::ApduTransport;
+/// Transport Error
+#[derive(Copy, Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
+pub enum TransportError {
+    /// Transport specific error
+    #[error("APDU Exchange Error")]
+    APDUExchangeError,
+}

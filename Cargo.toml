@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "ledger-generic",
-    "ledger-transport"
+    "ledger-transport",
+    "ledger-transport-hid"
 ]
 
 [profile.release]

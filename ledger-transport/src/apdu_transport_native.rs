@@ -18,24 +18,27 @@
 #![deny(warnings, trivial_casts, trivial_numeric_casts)]
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
+#![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
 
-extern crate byteorder;
+use futures::future;
+use ledger_generic::{ApduAnswer, ApduCommand};
+use crate::errors::TransportError::APDUExchangeError;
+use crate::errors::TransportError;
 
-pub use ledger_generic::{ApduAnswer, ApduCommand, APDUErrorCodes};
+/// Transport struct for non-wasm arch
+pub struct ApduTransport {
+    /// Native rust transport
+    pub transport_wrapper: ledger::TransportNativeHID,
+}
 
-/// APDU Errors
-pub mod errors;
+impl ApduTransport {
+    /// Use to talk to the ledger device
+    pub async fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, TransportError> {
+        let call = self
+            .transport_wrapper
+            .exchange(command)
+            .map_err(|_| APDUExchangeError)?;
 
-#[cfg(target_arch = "wasm32")]
-/// APDU Transport wrapper for JS/WASM transports
-pub mod apdu_transport_wasm;
-
-#[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{ApduTransport, TransportWrapperTrait};
-
-#[cfg(not(target_arch = "wasm32"))]
-/// APDU Errors
-pub mod apdu_transport_native;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::ApduTransport;
+        future::ready(Ok(call)).await
+    }
+}

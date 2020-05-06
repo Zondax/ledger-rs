@@ -37,3 +37,7 @@ impl ApduCommand {
         v
     }
 }
+
+pub enum APDUErrorCodes {
+    NoError = 0x9000,
+}
