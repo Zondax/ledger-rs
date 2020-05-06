@@ -68,7 +68,7 @@ impl BIP44Path {
         Ok(bip44_path)
     }
 
-    pub fn serialize(&self) -> Vec<u8>  {
+    pub fn serialize(&self) -> Vec<u8> {
         let mut m = Vec::new();
         m.write_u32::<LittleEndian>(self.0[0]).unwrap();
         m.write_u32::<LittleEndian>(self.0[1]).unwrap();
@@ -85,8 +85,8 @@ impl BIP44Path {
 
 #[cfg(test)]
 mod tests {
-    use crate::BIP44Path;
     use crate::errors::BIP44PathError;
+    use crate::BIP44Path;
     use byteorder::{LittleEndian, WriteBytesExt};
 
     const HARDENED_BIT: u32 = 1 << 31;
@@ -113,8 +113,12 @@ mod tests {
         let path_serialized = bip44_path.serialize();
 
         let mut expected_result = Vec::new();
-        expected_result.write_u32::<LittleEndian>(44 | HARDENED_BIT).unwrap();
-        expected_result.write_u32::<LittleEndian>(461 | HARDENED_BIT).unwrap();
+        expected_result
+            .write_u32::<LittleEndian>(44 | HARDENED_BIT)
+            .unwrap();
+        expected_result
+            .write_u32::<LittleEndian>(461 | HARDENED_BIT)
+            .unwrap();
         expected_result.write_u32::<LittleEndian>(0).unwrap();
         expected_result.write_u32::<LittleEndian>(0).unwrap();
         expected_result.write_u32::<LittleEndian>(0).unwrap();

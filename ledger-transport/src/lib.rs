@@ -21,7 +21,7 @@
 
 extern crate byteorder;
 
-pub use ledger_generic::{ApduAnswer, ApduCommand, APDUErrorCodes};
+pub use ledger_generic::{APDUErrorCodes, ApduAnswer, ApduCommand};
 
 /// APDU Errors
 pub mod errors;

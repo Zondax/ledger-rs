@@ -20,10 +20,10 @@
 #![deny(missing_docs)]
 #![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
 
+use crate::errors::TransportError;
+use crate::errors::TransportError::APDUExchangeError;
 use futures::future;
 use ledger_generic::{ApduAnswer, ApduCommand};
-use crate::errors::TransportError::APDUExchangeError;
-use crate::errors::TransportError;
 
 /// Transport struct for non-wasm arch
 pub struct ApduTransport {

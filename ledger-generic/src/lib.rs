@@ -48,7 +48,7 @@ impl ApduAnswer {
         return ApduAnswer {
             data: apdu_data.to_vec(),
             retcode: apdu_retcode,
-        }
+        };
     }
 }
 

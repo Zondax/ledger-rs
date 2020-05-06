@@ -16,7 +16,6 @@
 use std::num::ParseIntError;
 use thiserror::Error;
 
-
 /// BIP44Path Error
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum BIP44PathError {
