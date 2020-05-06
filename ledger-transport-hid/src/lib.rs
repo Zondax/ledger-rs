@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2020 ZondaX GmbH
+*   (c) 2018 ZondaX GmbH
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,31 +13,48 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-//! Support library for Filecoin Ledger Nano S/X apps
+use cfg_if::cfg_if;
+use lazy_static::lazy_static;
+use thiserror::Error;
 
-#![deny(warnings, trivial_casts, trivial_numeric_casts)]
-#![deny(unused_import_braces, unused_qualifications)]
-#![deny(missing_docs)]
+use ledger_generic::{ApduAnswer, ApduCommand};
 
-extern crate byteorder;
+#[cfg(test)]
+#[macro_use]
+extern crate serial_test;
 
-pub use ledger_generic::{ApduAnswer, ApduCommand, APDUErrorCodes};
+cfg_if! {
+    if #[cfg(target_os = "linux")] {
+        #[macro_use]
+        extern crate nix;
+        extern crate libc;
+        use std::{ffi::CStr, mem};
+    } else {
+        // Mock the type in other target_os
+        mod nix {
+            quick_error! {
+                #[derive(Debug)]
+                pub enum Error {
+                }
+            }
+        }
+    }
+}
 
-/// APDU Errors
-pub mod errors;
+use std::{ffi::CString, io::Cursor};
 
-#[cfg(target_arch = "wasm32")]
-/// APDU Transport wrapper for JS/WASM transports
-pub mod apdu_transport_wasm;
+use byteorder::{BigEndian, ReadBytesExt};
+use hidapi::HidDevice;
+use std::cell::RefCell;
+use std::sync::{Arc, Mutex, Weak};
 
-#[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{ApduTransport, TransportWrapperTrait};
+const LEDGER_VID: u16 = 0x2c97;
+const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
+const LEDGER_CHANNEL: u16 = 0x0101;
+const LEDGER_PACKET_SIZE: u8 = 64;
 
-#[cfg(not(target_arch = "wasm32"))]
-/// APDU Errors
-pub mod apdu_transport_native;
+const LEDGER_TIMEOUT: i32 = 10_000_000;
 
-<<<<<<< HEAD
 #[derive(Error, Debug)]
 pub enum LedgerError {
     /// Device not found error
@@ -64,15 +81,16 @@ pub enum LedgerError {
     UTF8(#[from] std::str::Utf8Error),
 }
 
-pub struct HidApiWrapper {
+struct HidApiWrapper {
     _api: RefCell<Weak<Mutex<hidapi::HidApi>>>,
 }
 
 #[allow(dead_code)]
-pub struct LedgerApp {
+pub struct TransportNativeHID {
     api_mutex: Arc<Mutex<hidapi::HidApi>>,
     device: HidDevice,
     device_mutex: Mutex<i32>,
+    logging: bool,
 }
 
 unsafe impl Send for HidApiWrapper {}
@@ -134,7 +152,7 @@ pub fn map_apdu_error(retcode: u16) -> LedgerError {
     }
 }
 
-impl LedgerApp {
+impl TransportNativeHID {
     #[cfg(not(target_os = "linux"))]
     fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
         for device in api.devices() {
@@ -163,16 +181,25 @@ impl LedgerApp {
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
 
-        let device_path = LedgerApp::find_ledger_device_path(&api)?;
+        let device_path = TransportNativeHID::find_ledger_device_path(&api)?;
         let device = api.open_path(&device_path)?;
 
-        let ledger = LedgerApp {
+        let ledger = TransportNativeHID {
             device,
             device_mutex: Mutex::new(0),
             api_mutex: api_mutex.clone(),
+            logging: false,
         };
 
         Ok(ledger)
+    }
+
+    pub fn logging(&self) -> bool {
+        self.logging
+    }
+
+    pub fn set_logging(&mut self, val: bool) {
+        self.logging = val;
     }
 
     fn write_apdu(&self, channel: u16, apdu_command: &[u8]) -> Result<i32, LedgerError> {
@@ -195,7 +222,9 @@ impl LedgerApp {
             buffer[4] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
             buffer[5..5 + chunk.len()].copy_from_slice(chunk);
 
-            debug!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
+            if self.logging {
+                println!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
+            }
 
             let result = self.device.write(&buffer);
 
@@ -253,7 +282,9 @@ impl LedgerApp {
 
             let new_chunk = &buffer[rdr.position() as usize..end_p];
 
-            debug!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            if self.logging {
+                println!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            }
 
             apdu_answer.extend_from_slice(new_chunk);
 
@@ -381,24 +412,18 @@ if #[cfg(target_os = "linux")] {
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::{ApduCommand, LedgerApp, HIDAPIWRAPPER};
-    use log::debug;
+    use crate::{ApduCommand, TransportNativeHID, HIDAPIWRAPPER};
     use serial_test;
-
-    fn init_logging() {
-        let _ = env_logger::builder().is_test(true).try_init();
-    }
 
     #[test]
     #[serial]
     fn list_all_devices() {
-        init_logging();
         let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
 
         for device_info in api.devices() {
-            debug!(
+            println!(
                 "{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
                 device_info.path,
                 device_info.vendor_id,
@@ -414,21 +439,19 @@ mod integration_tests {
     #[test]
     #[serial]
     fn ledger_device_path() {
-        init_logging();
         let apiwrapper = HIDAPIWRAPPER.lock().expect("Could not lock api wrapper");
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
 
         // TODO: Extend to discover two devices
         let ledger_path =
-            LedgerApp::find_ledger_device_path(&api).expect("Could not find a device");
-        debug!("{:?}", ledger_path);
+            TransportNativeHID::find_ledger_device_path(&api).expect("Could not find a device");
+        println!("{:?}", ledger_path);
     }
 
     #[test]
     #[serial]
     fn serialize() {
-        init_logging();
         let data = vec![0, 0, 0, 1, 0, 0, 0, 1];
 
         let command = ApduCommand {
@@ -450,8 +473,8 @@ mod integration_tests {
     #[test]
     #[serial]
     fn exchange() {
-        init_logging();
-        let ledger = LedgerApp::new().expect("Could not get a device");
+        let mut ledger = TransportNativeHID::new().expect("Could not get a device");
+        ledger.set_logging(true);
 
         let command = ApduCommand {
             cla: 0x56,
@@ -463,10 +486,6 @@ mod integration_tests {
         };
 
         let result = ledger.exchange(command).expect("Error during exchange");
-        debug!("{:?}", result);
+        println!("{:?}", result);
     }
 }
-=======
-#[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::ApduTransport;
->>>>>>> restructure + add transport wrappers

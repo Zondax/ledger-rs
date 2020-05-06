@@ -14,30 +14,15 @@
 *  limitations under the License.
 ********************************************************************************/
 
-#[derive(Debug)]
-pub struct ApduCommand {
-    pub cla: u8,
-    pub ins: u8,
-    pub p1: u8,
-    pub p2: u8,
-    pub length: u8,
-    pub data: Vec<u8>,
-}
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-#[derive(Debug)]
-pub struct ApduAnswer {
-    pub data: Vec<u8>,
-    pub retcode: u16,
-}
+// FIXME: We need cleaner errors here
 
-impl ApduCommand {
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
-        v.extend(&self.data);
-        v
-    }
-}
-
-pub enum APDUErrorCodes {
-    NoError = 0x9000,
+/// Transport Error
+#[derive(Copy, Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
+pub enum TransportError {
+    /// Transport specific error
+    #[error("APDU Exchange Error")]
+    APDUExchangeError,
 }
