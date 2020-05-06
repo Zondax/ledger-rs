@@ -121,6 +121,7 @@ impl HidApiWrapper {
     }
 }
 
+// FIXME: move this to ledger-transport
 pub fn map_apdu_error(retcode: u16) -> LedgerError {
     match retcode {
         0x6400 => LedgerError::Apdu(
