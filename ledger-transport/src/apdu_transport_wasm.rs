@@ -46,15 +46,16 @@ impl ApduTransport {
             .exchange_apdu(&apdu_command.serialize());
 
         let future = JsFuture::from(promise);
-        let answer = future.await.map_err(|_e| TransportError::APDUExchangeError)?;
-        let data = js_sys::Uint8Array::new(&answer).to_vec();
+        let result = future
+            .await
+            .map_err(|_e| TransportError::APDUExchangeError)?;
+        let answer = js_sys::Uint8Array::new(&result).to_vec();
 
-        // FIXME: if the reply is < 2 bytes, this is a serious error
+        // if the reply is < 2 bytes, this is a serious error
+        if answer.len() < 2 {
+            return Err(TransportError::APDUExchangeError);
+        }
 
-        // FIXME: This is incorrect. The retcode are the last two bytes in data
-        Ok(ApduAnswer {
-            data: data,
-            retcode: 0x9000,
-        })
+        Ok(ApduAnswer::from_answer(answer))
     }
 }

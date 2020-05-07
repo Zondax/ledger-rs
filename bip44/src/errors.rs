@@ -13,29 +13,19 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-//! Support library for Filecoin Ledger Nano S/X apps
+use std::num::ParseIntError;
+use thiserror::Error;
 
-#![deny(warnings, trivial_casts, trivial_numeric_casts)]
-#![deny(unused_import_braces, unused_qualifications)]
-#![deny(missing_docs)]
-
-extern crate byteorder;
-
-pub use ledger_generic::{APDUErrorCodes, ApduAnswer, ApduCommand};
-
-/// APDU Errors
-pub mod errors;
-
-#[cfg(target_arch = "wasm32")]
-/// APDU Transport wrapper for JS/WASM transports
-pub mod apdu_transport_wasm;
-
-#[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{ApduTransport, TransportWrapperTrait};
-
-#[cfg(not(target_arch = "wasm32"))]
-/// APDU Errors
-pub mod apdu_transport_native;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::ApduTransport;
+/// BIP44Path Error
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
+pub enum BIP44PathError {
+    /// Invalid length for a Bip 44 path
+    #[error("BIP44Path error : Invalid length for path")]
+    InvalidLength,
+    /// Bip 44 path string is missing the `m` prefix
+    #[error("BIP44Path error : Path should start with `m`")]
+    MissingPrefix,
+    /// Not able to parse integer
+    #[error("Cannot parse integer")]
+    ParseIntError(#[from] ParseIntError),
+}
