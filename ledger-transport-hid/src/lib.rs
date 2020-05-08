@@ -17,7 +17,7 @@ use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use thiserror::Error;
 
-use ledger_generic::{ApduAnswer, ApduCommand};
+use ledger_generic::{ApduAnswer, ApduCommand, APDUErrorCodes};
 
 #[cfg(test)]
 #[macro_use]
@@ -311,18 +311,13 @@ impl TransportNativeHID {
             return Err(LedgerError::Comm("response was too short"));
         }
 
-        let apdu_retcode =
-            (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
-        let apdu_data = &answer[..answer.len() - 2];
+        let apdu_answer = ApduAnswer::from_answer(answer);
 
-        if apdu_retcode != 0x9000 {
-            return Err(map_apdu_error(apdu_retcode));
+        if apdu_answer.retcode != APDUErrorCodes::NoError as u16 {
+            return Err(map_apdu_error(apdu_answer.retcode));
         }
 
-        Ok(ApduAnswer {
-            data: apdu_data.to_vec(),
-            retcode: apdu_retcode,
-        })
+        Ok(apdu_answer)
     }
 
     pub fn close() {

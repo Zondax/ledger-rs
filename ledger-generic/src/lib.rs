@@ -13,7 +13,6 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::convert::Into;
 
 #[derive(Debug)]
 pub struct ApduCommand {
@@ -55,10 +54,17 @@ impl ApduAnswer {
 #[derive(Copy, Clone)]
 pub enum APDUErrorCodes {
     NoError = 0x9000,
-}
-
-impl Into<u16> for APDUErrorCodes {
-    fn into(self) -> u16 {
-        self as u16
-    }
+    ExecutionError = 0x6400,
+    WrongLength = 0x6700,
+    EmptyBuffer = 0x6982,
+    OutputBufferTooSmall = 0x6983,
+    DataInvalid = 0x6984,
+    ConditionsNotSatisfied = 0x6985,
+    CommandNotAllowed = 0x6986,
+    BadKeyHandle = 0x6A80,
+    InvalidP1P2 = 0x6B00,
+    InsNotSupported = 0x6D00,
+    ClaNotSupported = 0x6E00,
+    Uunknown = 0x6F00,
+    SignVerifyError = 0x6F01,
 }
