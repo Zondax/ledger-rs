@@ -23,17 +23,17 @@
 use crate::errors::TransportError;
 use crate::errors::TransportError::APDUExchangeError;
 use futures::future;
-use ledger_generic::{ApduAnswer, ApduCommand};
+use ledger_generic::{APDUAnswer, APDUCommand};
 
 /// Transport struct for non-wasm arch
-pub struct ApduTransport {
+pub struct APDUTransport {
     /// Native rust transport
     pub transport_wrapper: ledger::TransportNativeHID,
 }
 
-impl ApduTransport {
+impl APDUTransport {
     /// Use to talk to the ledger device
-    pub async fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, TransportError> {
+    pub async fn exchange(&self, command: APDUCommand) -> Result<APDUAnswer, TransportError> {
         let call = self
             .transport_wrapper
             .exchange(command)
