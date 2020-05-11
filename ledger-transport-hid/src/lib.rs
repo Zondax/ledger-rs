@@ -17,7 +17,7 @@ use cfg_if::cfg_if;
 use lazy_static::lazy_static;
 use thiserror::Error;
 
-use ledger_generic::{ApduAnswer, ApduCommand, APDUErrorCodes};
+use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes};
 
 #[cfg(test)]
 #[macro_use]
@@ -65,7 +65,7 @@ pub enum LedgerError {
     Comm(&'static str),
     /// APDU error
     #[error("Ledger device: APDU error `{0}`")]
-    Apdu(&'static str),
+    APDU(&'static str),
 
     /// Ioctl error
     #[error("Ledger device: Ioctl error")]
@@ -124,32 +124,32 @@ impl HidApiWrapper {
 // FIXME: move this to ledger-transport
 pub fn map_apdu_error(retcode: u16) -> LedgerError {
     match retcode {
-        0x6400 => LedgerError::Apdu(
+        0x6400 => LedgerError::APDU(
             "[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)",
         ),
-        0x6700 => LedgerError::Apdu("[APDU_CODE_WRONG_LENGTH] Wrong length"),
-        0x6982 => LedgerError::Apdu("[APDU_CODE_EMPTY_BUFFER]"),
-        0x6983 => LedgerError::Apdu("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
+        0x6700 => LedgerError::APDU("[APDU_CODE_WRONG_LENGTH] Wrong length"),
+        0x6982 => LedgerError::APDU("[APDU_CODE_EMPTY_BUFFER]"),
+        0x6983 => LedgerError::APDU("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
         0x6984 => {
-            LedgerError::Apdu("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)")
+            LedgerError::APDU("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)")
         }
-        0x6985 => LedgerError::Apdu(
+        0x6985 => LedgerError::APDU(
             "[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied",
         ),
         0x6986 => {
-            LedgerError::Apdu("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)")
+            LedgerError::APDU("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)")
         }
-        0x6A80 => LedgerError::Apdu(
+        0x6A80 => LedgerError::APDU(
             "[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect",
         ),
-        0x6B00 => LedgerError::Apdu("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
-        0x6D00 => LedgerError::Apdu(
+        0x6B00 => LedgerError::APDU("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
+        0x6D00 => LedgerError::APDU(
             "[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid",
         ),
-        0x6E00 => LedgerError::Apdu("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
-        0x6F00 => LedgerError::Apdu("[APDU_CODE_UNKNOWN]"),
-        0x6F01 => LedgerError::Apdu("[APDU_CODE_SIGN_VERIFY_ERROR]"),
-        _ => LedgerError::Apdu("[APDU_ERROR] Unknown"),
+        0x6E00 => LedgerError::APDU("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
+        0x6F00 => LedgerError::APDU("[APDU_CODE_UNKNOWN]"),
+        0x6F01 => LedgerError::APDU("[APDU_CODE_SIGN_VERIFY_ERROR]"),
+        _ => LedgerError::APDU("[APDU_ERROR] Unknown"),
     }
 }
 
@@ -297,7 +297,7 @@ impl TransportNativeHID {
         }
     }
 
-    pub fn exchange(&self, command: ApduCommand) -> Result<ApduAnswer, LedgerError> {
+    pub fn exchange(&self, command: APDUCommand) -> Result<APDUAnswer, LedgerError> {
         extern crate hidapi;
 
         let _guard = self.device_mutex.lock().unwrap();
@@ -311,7 +311,7 @@ impl TransportNativeHID {
             return Err(LedgerError::Comm("response was too short"));
         }
 
-        let apdu_answer = ApduAnswer::from_answer(answer);
+        let apdu_answer = APDUAnswer::from_answer(answer);
 
         if apdu_answer.retcode != APDUErrorCodes::NoError as u16 {
             return Err(map_apdu_error(apdu_answer.retcode));
@@ -408,7 +408,7 @@ if #[cfg(target_os = "linux")] {
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::{ApduCommand, TransportNativeHID, HIDAPIWRAPPER};
+    use crate::{APDUCommand, TransportNativeHID, HIDAPIWRAPPER};
     use serial_test;
 
     #[test]
@@ -450,7 +450,7 @@ mod integration_tests {
     fn serialize() {
         let data = vec![0, 0, 0, 1, 0, 0, 0, 1];
 
-        let command = ApduCommand {
+        let command = APDUCommand {
             cla: 0x56,
             ins: 0x01,
             p1: 0x00,
@@ -472,7 +472,7 @@ mod integration_tests {
         let mut ledger = TransportNativeHID::new().expect("Could not get a device");
         ledger.set_logging(true);
 
-        let command = ApduCommand {
+        let command = APDUCommand {
             cla: 0x56,
             ins: 0x00,
             p1: 0x00,

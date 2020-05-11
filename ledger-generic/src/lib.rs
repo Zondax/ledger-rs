@@ -15,7 +15,7 @@
 ********************************************************************************/
 
 #[derive(Debug)]
-pub struct ApduCommand {
+pub struct APDUCommand {
     pub cla: u8,
     pub ins: u8,
     pub p1: u8,
@@ -25,12 +25,12 @@ pub struct ApduCommand {
 }
 
 #[derive(Debug)]
-pub struct ApduAnswer {
+pub struct APDUAnswer {
     pub data: Vec<u8>,
     pub retcode: u16,
 }
 
-impl ApduCommand {
+impl APDUCommand {
     pub fn serialize(&self) -> Vec<u8> {
         let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
         v.extend(&self.data);
@@ -38,13 +38,13 @@ impl ApduCommand {
     }
 }
 
-impl ApduAnswer {
-    pub fn from_answer(answer: Vec<u8>) -> ApduAnswer {
+impl APDUAnswer {
+    pub fn from_answer(answer: Vec<u8>) -> APDUAnswer {
         let apdu_retcode =
             (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
         let apdu_data = &answer[..answer.len() - 2];
 
-        return ApduAnswer {
+        return APDUAnswer {
             data: apdu_data.to_vec(),
             retcode: apdu_retcode,
         };
@@ -65,6 +65,6 @@ pub enum APDUErrorCodes {
     InvalidP1P2 = 0x6B00,
     InsNotSupported = 0x6D00,
     ClaNotSupported = 0x6E00,
-    Uunknown = 0x6F00,
+    Unknown = 0x6F00,
     SignVerifyError = 0x6F01,
 }
