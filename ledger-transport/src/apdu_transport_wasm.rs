@@ -20,7 +20,7 @@
 // #![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
 
 use crate::errors::TransportError;
-use ledger_generic::{ApduAnswer, ApduCommand};
+use ledger_generic::{APDUAnswer, APDUCommand};
 
 use js_sys;
 use wasm_bindgen_futures::JsFuture;
@@ -32,15 +32,15 @@ pub trait TransportWrapperTrait {
 }
 
 /// Transport struct for non-wasm arch
-pub struct ApduTransport {
+pub struct APDUTransport {
     /// Contain javascript transport object
     pub transport_wrapper: Box<dyn TransportWrapperTrait>,
 }
 
 /// Transport Impl for wasm
-impl ApduTransport {
+impl APDUTransport {
     /// Use to talk to the ledger device
-    pub async fn exchange(&self, apdu_command: ApduCommand) -> Result<ApduAnswer, TransportError> {
+    pub async fn exchange(&self, apdu_command: APDUCommand) -> Result<APDUAnswer, TransportError> {
         let promise = self
             .transport_wrapper
             .exchange_apdu(&apdu_command.serialize());
@@ -56,6 +56,6 @@ impl ApduTransport {
             return Err(TransportError::APDUExchangeError);
         }
 
-        Ok(ApduAnswer::from_answer(answer))
+        Ok(APDUAnswer::from_answer(answer))
     }
 }

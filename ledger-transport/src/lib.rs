@@ -21,7 +21,7 @@
 
 extern crate byteorder;
 
-pub use ledger_generic::{APDUErrorCodes, ApduAnswer, ApduCommand};
+pub use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes};
 
 /// APDU Errors
 pub mod errors;
@@ -31,11 +31,11 @@ pub mod errors;
 pub mod apdu_transport_wasm;
 
 #[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{ApduTransport, TransportWrapperTrait};
+pub use crate::apdu_transport_wasm::{APDUTransport, TransportWrapperTrait};
 
 #[cfg(not(target_arch = "wasm32"))]
 /// APDU Errors
 pub mod apdu_transport_native;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::ApduTransport;
+pub use crate::apdu_transport_native::APDUTransport;

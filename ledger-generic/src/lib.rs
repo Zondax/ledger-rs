@@ -13,10 +13,9 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::convert::Into;
 
 #[derive(Debug)]
-pub struct ApduCommand {
+pub struct APDUCommand {
     pub cla: u8,
     pub ins: u8,
     pub p1: u8,
@@ -26,12 +25,12 @@ pub struct ApduCommand {
 }
 
 #[derive(Debug)]
-pub struct ApduAnswer {
+pub struct APDUAnswer {
     pub data: Vec<u8>,
     pub retcode: u16,
 }
 
-impl ApduCommand {
+impl APDUCommand {
     pub fn serialize(&self) -> Vec<u8> {
         let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
         v.extend(&self.data);
@@ -39,13 +38,13 @@ impl ApduCommand {
     }
 }
 
-impl ApduAnswer {
-    pub fn from_answer(answer: Vec<u8>) -> ApduAnswer {
+impl APDUAnswer {
+    pub fn from_answer(answer: Vec<u8>) -> APDUAnswer {
         let apdu_retcode =
             (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
         let apdu_data = &answer[..answer.len() - 2];
 
-        return ApduAnswer {
+        return APDUAnswer {
             data: apdu_data.to_vec(),
             retcode: apdu_retcode,
         };
@@ -55,10 +54,17 @@ impl ApduAnswer {
 #[derive(Copy, Clone)]
 pub enum APDUErrorCodes {
     NoError = 0x9000,
-}
-
-impl Into<u16> for APDUErrorCodes {
-    fn into(self) -> u16 {
-        self as u16
-    }
+    ExecutionError = 0x6400,
+    WrongLength = 0x6700,
+    EmptyBuffer = 0x6982,
+    OutputBufferTooSmall = 0x6983,
+    DataInvalid = 0x6984,
+    ConditionsNotSatisfied = 0x6985,
+    CommandNotAllowed = 0x6986,
+    BadKeyHandle = 0x6A80,
+    InvalidP1P2 = 0x6B00,
+    InsNotSupported = 0x6D00,
+    ClaNotSupported = 0x6E00,
+    Unknown = 0x6F00,
+    SignVerifyError = 0x6F01,
 }
