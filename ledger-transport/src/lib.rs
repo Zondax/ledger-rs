@@ -38,4 +38,4 @@ pub use crate::apdu_transport_wasm::{APDUTransport, TransportWrapperTrait};
 pub mod apdu_transport_native;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::ApduTransport;
+pub use crate::apdu_transport_native::APDUTransport;
