@@ -20,9 +20,15 @@ use thiserror::Error;
 // FIXME: We need cleaner errors here
 
 /// Transport Error
-#[derive(Copy, Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
 pub enum TransportError {
     /// Transport specific error
     #[error("APDU Exchange Error")]
     APDUExchangeError,
+    /// Javscript error
+    #[error("Javascript error : `[{0}] {1}`")]
+    JavascriptError(String, String),
+    /// Error Unknown
+    #[error("Unknown Error")]
+    UnknownError,
 }
