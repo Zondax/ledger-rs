@@ -20,7 +20,6 @@ pub struct APDUCommand {
     pub ins: u8,
     pub p1: u8,
     pub p2: u8,
-    pub length: u8,
     pub data: Vec<u8>,
 }
 
@@ -32,7 +31,7 @@ pub struct APDUAnswer {
 
 impl APDUCommand {
     pub fn serialize(&self) -> Vec<u8> {
-        let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.length];
+        let mut v = vec![self.cla, self.ins, self.p1, self.p2, self.data.len() as u8];
         v.extend(&self.data);
         v
     }

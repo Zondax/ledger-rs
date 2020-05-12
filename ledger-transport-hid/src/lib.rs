@@ -455,7 +455,6 @@ mod integration_tests {
             ins: 0x01,
             p1: 0x00,
             p2: 0x00,
-            length: data.len() as u8,
             data,
         };
 
@@ -477,7 +476,6 @@ mod integration_tests {
             ins: 0x00,
             p1: 0x00,
             p2: 0x00,
-            length: 0,
             data: Vec::new(),
         };
 
