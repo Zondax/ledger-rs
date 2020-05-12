@@ -423,8 +423,8 @@ if #[cfg(target_os = "linux")] {
 #[cfg(test)]
 mod integration_tests {
     use crate::{ApduCommand, LedgerApp, HIDAPIWRAPPER};
-    use serial_test;
     use log::debug;
+    use serial_test;
 
     fn init_logging() {
         let _ = env_logger::builder().is_test(true).try_init();
