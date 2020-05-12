@@ -23,8 +23,8 @@ use crate::errors::TransportError;
 use ledger_generic::{APDUAnswer, APDUCommand};
 
 use js_sys;
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen::JsValue;
+use wasm_bindgen_futures::JsFuture;
 
 /// Trait for any APDU transport
 pub trait TransportWrapperTrait {
@@ -47,21 +47,25 @@ impl APDUTransport {
             .exchange_apdu(&apdu_command.serialize());
 
         let future = JsFuture::from(promise);
-        let result = future
-            .await
-            .map_err(|e| {
-                // All javascript Error are based on this model : https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error
-                // Will work also for Ledger specific Transport error : https://github.com/LedgerHQ/ledgerjs/blob/master/packages/errors/src/index.ts#L228
-                // Also TransportStatus Error https://github.com/LedgerHQ/ledgerjs/blob/master/packages/errors/src/index.ts#L300
-                // Which should cover most it of our need
-                if js_sys::Reflect::has(&e, &JsValue::from_str("message")).unwrap() && js_sys::Reflect::has(&e, &JsValue::from_str("name")).unwrap() {
-                    let error_message = js_sys::Reflect::get(&e, &JsValue::from_str("message")).unwrap();
-                    let error_name = js_sys::Reflect::get(&e, &JsValue::from_str("name")).unwrap();
-                    return TransportError::JavascriptError(error_name.as_string().unwrap(), error_message.as_string().unwrap());
-                }
+        let result = future.await.map_err(|e| {
+            // All javascript Error are based on this model : https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error
+            // Will work also for Ledger specific Transport error : https://github.com/LedgerHQ/ledgerjs/blob/master/packages/errors/src/index.ts#L228
+            // Also TransportStatus Error https://github.com/LedgerHQ/ledgerjs/blob/master/packages/errors/src/index.ts#L300
+            // Which should cover most it of our need
+            if js_sys::Reflect::has(&e, &JsValue::from_str("message")).unwrap()
+                && js_sys::Reflect::has(&e, &JsValue::from_str("name")).unwrap()
+            {
+                let error_message =
+                    js_sys::Reflect::get(&e, &JsValue::from_str("message")).unwrap();
+                let error_name = js_sys::Reflect::get(&e, &JsValue::from_str("name")).unwrap();
+                return TransportError::JavascriptError(
+                    error_name.as_string().unwrap(),
+                    error_message.as_string().unwrap(),
+                );
+            }
 
-                return TransportError::UnknownError;
-            })?;
+            return TransportError::UnknownError;
+        })?;
         let answer = js_sys::Uint8Array::new(&result).to_vec();
 
         // if the reply is < 2 bytes, this is a serious error
