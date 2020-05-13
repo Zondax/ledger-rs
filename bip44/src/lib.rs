@@ -56,7 +56,6 @@ impl BIP44Path {
                     (index, 0)
                 };
 
-                // FIX ME
                 let child_index = index_to_parse.parse::<u32>()?;
 
                 Ok(child_index | mask)
