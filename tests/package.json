@@ -1,0 +1,9 @@
+{
+  "name": "ledger-test",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "@zondax/zemu": "^0.2.4"
+  }
+}

@@ -1,0 +1,17 @@
+[package]
+name = "ledger-node-example"
+version = "0.1.0"
+authors = ["Zondax GmbH <info@zondax.ch>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+
+ledger-transport = { path = "../../ledger-transport" }
+ledger-generic = { path = "../../ledger-generic" }
