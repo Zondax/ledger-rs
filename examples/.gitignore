@@ -3,3 +3,6 @@ target
 node_modules
 ledger-node
 ledger-browser
+certs/cert.pem
+certs/server.cert
+certs/server.key
