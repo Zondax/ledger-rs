@@ -18,7 +18,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use thiserror::Error;
 
-use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes};
+use ledger_generic::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 
 #[cfg(test)]
 #[macro_use]
@@ -118,38 +118,6 @@ impl HidApiWrapper {
         let tmp = Arc::new(Mutex::new(hidapi));
         self._api.replace(Arc::downgrade(&tmp));
         Ok(tmp)
-    }
-}
-
-// FIXME: move this to ledger-transport
-pub fn map_apdu_error(retcode: u16) -> LedgerError {
-    match retcode {
-        0x6400 => LedgerError::APDU(
-            "[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)",
-        ),
-        0x6700 => LedgerError::APDU("[APDU_CODE_WRONG_LENGTH] Wrong length"),
-        0x6982 => LedgerError::APDU("[APDU_CODE_EMPTY_BUFFER]"),
-        0x6983 => LedgerError::APDU("[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]"),
-        0x6984 => {
-            LedgerError::APDU("[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)")
-        }
-        0x6985 => LedgerError::APDU(
-            "[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied",
-        ),
-        0x6986 => {
-            LedgerError::APDU("[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)")
-        }
-        0x6A80 => LedgerError::APDU(
-            "[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect",
-        ),
-        0x6B00 => LedgerError::APDU("[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2"),
-        0x6D00 => LedgerError::APDU(
-            "[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid",
-        ),
-        0x6E00 => LedgerError::APDU("[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported"),
-        0x6F00 => LedgerError::APDU("[APDU_CODE_UNKNOWN]"),
-        0x6F01 => LedgerError::APDU("[APDU_CODE_SIGN_VERIFY_ERROR]"),
-        _ => LedgerError::APDU("[APDU_ERROR] Unknown"),
     }
 }
 
@@ -301,7 +269,9 @@ impl TransportNativeHID {
         let apdu_answer = APDUAnswer::from_answer(answer);
 
         if apdu_answer.retcode != APDUErrorCodes::NoError as u16 {
-            return Err(map_apdu_error(apdu_answer.retcode));
+            return Err(LedgerError::APDU(map_apdu_error_description(
+                apdu_answer.retcode,
+            )));
         }
 
         Ok(apdu_answer)
