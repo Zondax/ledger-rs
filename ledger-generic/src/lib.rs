@@ -68,7 +68,6 @@ pub enum APDUErrorCodes {
     SignVerifyError = 0x6F01,
 }
 
-
 pub fn map_apdu_error_description(retcode: u16) -> &'static str {
     match retcode {
         0x6400 => "[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)",

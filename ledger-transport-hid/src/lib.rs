@@ -18,7 +18,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use thiserror::Error;
 
-use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes, map_apdu_error_description};
+use ledger_generic::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 
 #[cfg(test)]
 #[macro_use]
@@ -269,7 +269,9 @@ impl TransportNativeHID {
         let apdu_answer = APDUAnswer::from_answer(answer);
 
         if apdu_answer.retcode != APDUErrorCodes::NoError as u16 {
-            return Err(LedgerError::APDU(map_apdu_error_description(apdu_answer.retcode)));
+            return Err(LedgerError::APDU(map_apdu_error_description(
+                apdu_answer.retcode,
+            )));
         }
 
         Ok(apdu_answer)

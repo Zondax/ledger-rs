@@ -20,7 +20,7 @@
 // #![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
 
 use crate::errors::TransportError;
-use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes, map_apdu_error_description};
+use ledger_generic::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 
 use js_sys;
 use wasm_bindgen::JsValue;
@@ -76,7 +76,10 @@ impl APDUTransport {
         let apdu_answer = APDUAnswer::from_answer(answer);
 
         if apdu_answer.retcode != APDUErrorCodes::NoError as u16 {
-            return Err(TransportError::APDU(apdu_answer.retcode, map_apdu_error_description(apdu_answer.retcode).to_string()));
+            return Err(TransportError::APDU(
+                apdu_answer.retcode,
+                map_apdu_error_description(apdu_answer.retcode).to_string(),
+            ));
         }
 
         Ok(apdu_answer)
