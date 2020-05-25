@@ -67,3 +67,23 @@ pub enum APDUErrorCodes {
     Unknown = 0x6F00,
     SignVerifyError = 0x6F01,
 }
+
+
+pub fn map_apdu_error_description(retcode: u16) -> &'static str {
+    match retcode {
+        0x6400 => "[APDU_CODE_EXECUTION_ERROR] No information given (NV-Ram not changed)",
+        0x6700 => "[APDU_CODE_WRONG_LENGTH] Wrong length",
+        0x6982 => "[APDU_CODE_EMPTY_BUFFER]",
+        0x6983 => "[APDU_CODE_OUTPUT_BUFFER_TOO_SMALL]",
+        0x6984 => "[APDU_CODE_DATA_INVALID] data reversibly blocked (invalidated)",
+        0x6985 => "[APDU_CODE_CONDITIONS_NOT_SATISFIED] Conditions of use not satisfied",
+        0x6986 => "[APDU_CODE_COMMAND_NOT_ALLOWED] Command not allowed (no current EF)",
+        0x6A80 => "[APDU_CODE_BAD_KEY_HANDLE] The parameters in the data field are incorrect",
+        0x6B00 => "[APDU_CODE_INVALIDP1P2] Wrong parameter(s) P1-P2",
+        0x6D00 => "[APDU_CODE_INS_NOT_SUPPORTED] Instruction code not supported or invalid",
+        0x6E00 => "[APDU_CODE_CLA_NOT_SUPPORTED] Class not supported",
+        0x6F00 => "[APDU_CODE_UNKNOWN]",
+        0x6F01 => "[APDU_CODE_SIGN_VERIFY_ERROR]",
+        _ => "[APDU_ERROR] Unknown",
+    }
+}

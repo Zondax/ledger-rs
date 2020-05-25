@@ -31,4 +31,7 @@ pub enum TransportError {
     /// Error Unknown
     #[error("Unknown Error")]
     UnknownError,
+    /// APDU error
+    #[error("Ledger device: APDU error {1}")]
+    APDU(u16,String),
 }
