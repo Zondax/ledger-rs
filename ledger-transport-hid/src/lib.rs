@@ -42,7 +42,7 @@ cfg_if! {
     }
 }
 
-use std::{ffi::CString, io::Cursor};
+use std::io::Cursor;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use hidapi::HidDevice;
@@ -123,22 +123,22 @@ impl HidApiWrapper {
 
 impl TransportNativeHID {
     #[cfg(not(target_os = "linux"))]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
-        for device in api.devices() {
-            if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
-                return Ok(device.path.clone());
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<&CStr, LedgerError> {
+        for device in api.device_list() {
+            if device.vendor_id() == LEDGER_VID && device.usage_page() == LEDGER_USAGE_PAGE {
+                return Ok(device.path());
             }
         }
         Err(LedgerError::DeviceNotFound)
     }
 
     #[cfg(target_os = "linux")]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
-        for device in api.devices() {
-            if device.vendor_id == LEDGER_VID {
-                let usage_page = get_usage_page(&device.path)?;
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<&CStr, LedgerError> {
+        for device in api.device_list() {
+            if device.vendor_id() == LEDGER_VID {
+                let usage_page = get_usage_page(&device.path())?;
                 if usage_page == LEDGER_USAGE_PAGE {
-                    return Ok(device.path.clone());
+                    return Ok(device.path());
                 }
             }
         }
@@ -381,16 +381,16 @@ mod integration_tests {
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
 
-        for device_info in api.devices() {
+        for device_info in api.device_list() {
             debug!(
                 "{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
-                device_info.path,
-                device_info.vendor_id,
-                device_info.product_id,
-                device_info.usage_page,
-                device_info.interface_number,
-                device_info.manufacturer_string.clone().unwrap_or_default(),
-                device_info.product_string.clone().unwrap_or_default()
+                device_info.path(),
+                device_info.vendor_id(),
+                device_info.product_id(),
+                device_info.usage_page(),
+                device_info.interface_number(),
+                device_info.manufacturer_string().unwrap_or_default(),
+                device_info.product_string().unwrap_or_default()
             );
         }
     }
@@ -434,7 +434,7 @@ mod integration_tests {
     fn exchange() {
         init_logging();
 
-        let mut ledger = TransportNativeHID::new().expect("Could not get a device");
+        let ledger = TransportNativeHID::new().expect("Could not get a device");
 
         let command = APDUCommand {
             cla: 0x56,
