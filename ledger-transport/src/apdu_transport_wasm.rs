@@ -41,7 +41,7 @@ pub struct APDUTransport {
 /// Transport Impl for wasm
 impl APDUTransport {
     /// Use to talk to the ledger device
-    pub async fn exchange(&self, apdu_command: APDUCommand) -> Result<APDUAnswer, TransportError> {
+    pub async fn exchange(&self, apdu_command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
         let promise = self
             .transport_wrapper
             .exchange_apdu(&apdu_command.serialize());

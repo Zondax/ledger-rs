@@ -252,7 +252,7 @@ impl TransportNativeHID {
         }
     }
 
-    pub fn exchange(&self, command: APDUCommand) -> Result<APDUAnswer, LedgerError> {
+    pub fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, LedgerError> {
         extern crate hidapi;
 
         let _guard = self.device_mutex.lock().unwrap();
@@ -444,7 +444,7 @@ mod integration_tests {
             data: Vec::new(),
         };
 
-        let result = ledger.exchange(command).expect("Error during exchange");
+        let result = ledger.exchange(&command).expect("Error during exchange");
         debug!("{:?}", result);
     }
 }

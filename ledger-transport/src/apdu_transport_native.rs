@@ -33,7 +33,7 @@ pub struct APDUTransport {
 
 impl APDUTransport {
     /// Use to talk to the ledger device
-    pub async fn exchange(&self, command: APDUCommand) -> Result<APDUAnswer, TransportError> {
+    pub async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
         let call = self
             .transport_wrapper
             .exchange(command)
