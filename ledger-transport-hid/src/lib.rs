@@ -109,8 +109,8 @@ impl HidApiWrapper {
 
     fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, LedgerError> {
         let tmp = self._api.borrow().upgrade();
-        if tmp.is_some() {
-            let api_mutex = tmp.unwrap();
+
+        if let Some(api_mutex) = tmp {
             return Ok(api_mutex);
         }
 

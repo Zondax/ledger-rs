@@ -19,8 +19,6 @@
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
 
-extern crate byteorder;
-
 pub use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes};
 
 /// APDU Errors

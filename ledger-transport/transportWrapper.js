@@ -1,6 +1,6 @@
 
 export class TransportWrapper {
-    function exchange(apduCommand) {
+    exchange(apduCommand) {
         return original_transport.exchange(apduCommand);
     }
 }

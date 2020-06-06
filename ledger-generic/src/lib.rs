@@ -43,10 +43,10 @@ impl APDUAnswer {
             (u16::from(answer[answer.len() - 2]) << 8) + u16::from(answer[answer.len() - 1]);
         let apdu_data = &answer[..answer.len() - 2];
 
-        return APDUAnswer {
+        APDUAnswer {
             data: apdu_data.to_vec(),
             retcode: apdu_retcode,
-        };
+        }
     }
 }
 
