@@ -33,9 +33,13 @@ const CLA_DEVICE_INFO: u8 = 0xe0;
 const INS_DEVICE_INFO: u8 = 0x01;
 const USER_MESSAGE_CHUNK_SIZE: usize = 250;
 
-enum PayloadType {
+/// Chunk payload type
+pub enum ChunkPayloadType {
+    /// First chunk
     Init = 0x00,
+    /// Append chunk
     Add = 0x01,
+    /// Last chunk
     Last = 0x02,
 }
 
@@ -251,7 +255,7 @@ pub async fn send_chunks(
         _ => (),
     }
 
-    if start_command.p1 != PayloadType::Init as u8 {
+    if start_command.p1 != ChunkPayloadType::Init as u8 {
         return Err(LedgerError::InvalidChunkPayloadType);
     }
 
@@ -260,9 +264,9 @@ pub async fn send_chunks(
     // Send message chunks
     let last_chunk_index = chunks.len() - 1;
     for (packet_idx, chunk) in chunks.enumerate() {
-        let mut p1 = PayloadType::Add as u8;
+        let mut p1 = ChunkPayloadType::Add as u8;
         if packet_idx == last_chunk_index {
-            p1 = PayloadType::Last as u8
+            p1 = ChunkPayloadType::Last as u8
         }
 
         let command = APDUCommand {
