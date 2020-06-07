@@ -13,38 +13,43 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use cfg_if::cfg_if;
-use lazy_static::lazy_static;
-use log::debug;
-use thiserror::Error;
 
-use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
-
+extern crate hidapi;
 #[cfg(test)]
 #[macro_use]
 extern crate serial_test;
 
-cfg_if! {
-    if #[cfg(target_os = "linux")] {
-        #[macro_use]
-        extern crate nix;
-        extern crate libc;
-        use std::{ffi::CStr, mem};
-    }
-}
-
-use std::io::Cursor;
-
 use byteorder::{BigEndian, ReadBytesExt};
+use cfg_if::cfg_if;
 use hidapi::HidDevice;
+use lazy_static::lazy_static;
+use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
+use log::debug;
 use std::cell::RefCell;
+use std::ffi::CStr;
+use std::io::Cursor;
 use std::sync::{Arc, Mutex, Weak};
+use thiserror::Error;
+
+cfg_if! {
+if #[cfg(target_os = "linux")] {
+    #[macro_use]
+    extern crate nix;
+    extern crate libc;
+    use std::mem;
+} else {
+    // Mock the type in other target_os
+    mod nix {
+        use thiserror::Error;
+        #[derive(Clone, Debug, Error, Eq, PartialEq)]
+        pub enum Error {}
+    }
+}}
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
 const LEDGER_CHANNEL: u16 = 0x0101;
 const LEDGER_PACKET_SIZE: u8 = 64;
-
 const LEDGER_TIMEOUT: i32 = 10_000_000;
 
 #[derive(Error, Debug)]
@@ -244,8 +249,6 @@ impl TransportNativeHID {
     }
 
     pub fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, LedgerError> {
-        extern crate hidapi;
-
         let _guard = self.device_mutex.lock().unwrap();
 
         self.write_apdu(LEDGER_CHANNEL, &command.serialize())?;
@@ -427,9 +430,11 @@ mod integration_tests {
 
         let ledger = TransportNativeHID::new().expect("Could not get a device");
 
+        // use app info command that works on almost any app
+        // including dashboard
         let command = APDUCommand {
-            cla: 0x56,
-            ins: 0x00,
+            cla: 0xb0,
+            ins: 0x01,
             p1: 0x00,
             p2: 0x00,
             data: Vec::new(),
