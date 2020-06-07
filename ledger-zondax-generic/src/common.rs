@@ -251,15 +251,16 @@ pub async fn send_chunks(
         _ => (),
     }
 
+    if start_command.p1 != PayloadType::Init as u8 {
+        return Err(LedgerError::InvalidChunkPayloadType);
+    }
+
     let mut response = apdu_transport.exchange(start_command).await?;
 
     // Send message chunks
     let last_chunk_index = chunks.len() - 1;
     for (packet_idx, chunk) in chunks.enumerate() {
         let mut p1 = PayloadType::Add as u8;
-        if packet_idx == 0 {
-            p1 = PayloadType::Init as u8
-        }
         if packet_idx == last_chunk_index {
             p1 = PayloadType::Last as u8
         }

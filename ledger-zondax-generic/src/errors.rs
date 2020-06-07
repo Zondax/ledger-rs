@@ -27,6 +27,9 @@ pub enum LedgerError {
     /// The message cannot be empty
     #[error("message cannot be empty")]
     InvalidEmptyMessage,
+    /// Invalid payload type in chunk
+    #[error("The chunk payload type was invalid. First message should be Init")]
+    InvalidChunkPayloadType,
     /// The size fo the message to sign is invalid
     #[error("message size is invalid (too big)")]
     InvalidMessageSize,
