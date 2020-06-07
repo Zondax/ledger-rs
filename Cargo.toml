@@ -1,8 +1,9 @@
 [workspace]
 members = [
-    "ledger-generic",
+    "ledger-apdu",
     "ledger-transport",
     "ledger-transport-hid",
+    "ledger-zondax-generic"
 ]
 
 [profile.release]

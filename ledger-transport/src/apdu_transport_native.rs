@@ -23,7 +23,7 @@
 use crate::errors::TransportError;
 use crate::errors::TransportError::APDUExchangeError;
 use futures::future;
-use ledger_generic::{APDUAnswer, APDUCommand};
+use ledger_apdu::{APDUAnswer, APDUCommand};
 
 /// Transport struct for non-wasm arch
 pub struct APDUTransport {

@@ -18,7 +18,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use thiserror::Error;
 
-use ledger_generic::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
+use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 
 #[cfg(test)]
 #[macro_use]

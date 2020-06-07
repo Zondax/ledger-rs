@@ -13,27 +13,9 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-//! Generic APDU transport library for Ledger Nano S/X apps
 
-#![deny(warnings, trivial_casts, trivial_numeric_casts)]
-#![deny(unused_import_braces, unused_qualifications)]
-#![deny(missing_docs)]
+mod common;
+mod errors;
 
-pub use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCodes};
-
-/// APDU Errors
-pub mod errors;
-
-#[cfg(target_arch = "wasm32")]
-/// APDU Transport wrapper for JS/WASM transports
-pub mod apdu_transport_wasm;
-
-#[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{APDUTransport, TransportWrapperTrait};
-
-#[cfg(not(target_arch = "wasm32"))]
-/// APDU Errors
-pub mod apdu_transport_native;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::APDUTransport;
+pub use common::*;
+pub use errors::*;
