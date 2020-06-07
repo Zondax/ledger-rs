@@ -30,15 +30,6 @@ cfg_if! {
         extern crate nix;
         extern crate libc;
         use std::{ffi::CStr, mem};
-    } else {
-        // Mock the type in other target_os
-        mod nix {
-            quick_error! {
-                #[derive(Debug)]
-                pub enum Error {
-                }
-            }
-        }
     }
 }
 
