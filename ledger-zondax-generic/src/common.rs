@@ -55,6 +55,10 @@ pub struct Version {
     pub minor: u16,
     /// Version Patch
     pub patch: u16,
+    /// Device is locked
+    pub locked: bool,
+    /// Target ID
+    pub target_id: [u8; 4],
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -229,6 +233,8 @@ pub async fn get_version(cla: u8, apdu_transport: &APDUTransport) -> Result<Vers
             major: response.data[1] as u16,
             minor: response.data[2] as u16,
             patch: response.data[3] as u16,
+            locked: false,
+            target_id: [0, 0, 0, 0],
         },
         // double byte version numbers
         7 => Version {
@@ -236,6 +242,36 @@ pub async fn get_version(cla: u8, apdu_transport: &APDUTransport) -> Result<Vers
             major: response.data[1] as u16 * 256 + response.data[2] as u16,
             minor: response.data[3] as u16 * 256 + response.data[4] as u16,
             patch: response.data[5] as u16 * 256 + response.data[6] as u16,
+            locked: false,
+            target_id: [0, 0, 0, 0],
+        },
+        // double byte version numbers + lock + target id
+        9 => Version {
+            mode: response.data[0],
+            major: response.data[1] as u16,
+            minor: response.data[2] as u16,
+            patch: response.data[3] as u16,
+            locked: response.data[4] != 0,
+            target_id: [
+                response.data[5],
+                response.data[6],
+                response.data[7],
+                response.data[8],
+            ],
+        },
+        // double byte version numbers + lock + target id
+        12 => Version {
+            mode: response.data[0],
+            major: response.data[1] as u16 * 256 + response.data[2] as u16,
+            minor: response.data[3] as u16 * 256 + response.data[4] as u16,
+            patch: response.data[5] as u16 * 256 + response.data[6] as u16,
+            locked: response.data[7] != 0,
+            target_id: [
+                response.data[8],
+                response.data[9],
+                response.data[10],
+                response.data[11],
+            ],
         },
         _ => return Err(LedgerError::InvalidVersion),
     };
