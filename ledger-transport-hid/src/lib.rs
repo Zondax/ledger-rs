@@ -13,47 +13,43 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use cfg_if::cfg_if;
-use lazy_static::lazy_static;
-use log::debug;
-use thiserror::Error;
 
-use ledger_generic::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
-
+extern crate hidapi;
 #[cfg(test)]
 #[macro_use]
 extern crate serial_test;
 
-cfg_if! {
-    if #[cfg(target_os = "linux")] {
-        #[macro_use]
-        extern crate nix;
-        extern crate libc;
-        use std::{ffi::CStr, mem};
-    } else {
-        // Mock the type in other target_os
-        mod nix {
-            quick_error! {
-                #[derive(Debug)]
-                pub enum Error {
-                }
-            }
-        }
-    }
-}
-
-use std::{ffi::CString, io::Cursor};
-
 use byteorder::{BigEndian, ReadBytesExt};
+use cfg_if::cfg_if;
 use hidapi::HidDevice;
+use lazy_static::lazy_static;
+use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
+use log::debug;
 use std::cell::RefCell;
+use std::ffi::CStr;
+use std::io::Cursor;
 use std::sync::{Arc, Mutex, Weak};
+use thiserror::Error;
+
+cfg_if! {
+if #[cfg(target_os = "linux")] {
+    #[macro_use]
+    extern crate nix;
+    extern crate libc;
+    use std::mem;
+} else {
+    // Mock the type in other target_os
+    mod nix {
+        use thiserror::Error;
+        #[derive(Clone, Debug, Error, Eq, PartialEq)]
+        pub enum Error {}
+    }
+}}
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
 const LEDGER_CHANNEL: u16 = 0x0101;
 const LEDGER_PACKET_SIZE: u8 = 64;
-
 const LEDGER_TIMEOUT: i32 = 10_000_000;
 
 #[derive(Error, Debug)]
@@ -109,8 +105,8 @@ impl HidApiWrapper {
 
     fn get(&self) -> Result<Arc<Mutex<hidapi::HidApi>>, LedgerError> {
         let tmp = self._api.borrow().upgrade();
-        if tmp.is_some() {
-            let api_mutex = tmp.unwrap();
+
+        if let Some(api_mutex) = tmp {
             return Ok(api_mutex);
         }
 
@@ -123,22 +119,22 @@ impl HidApiWrapper {
 
 impl TransportNativeHID {
     #[cfg(not(target_os = "linux"))]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
-        for device in api.devices() {
-            if device.vendor_id == LEDGER_VID && device.usage_page == LEDGER_USAGE_PAGE {
-                return Ok(device.path.clone());
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<&CStr, LedgerError> {
+        for device in api.device_list() {
+            if device.vendor_id() == LEDGER_VID && device.usage_page() == LEDGER_USAGE_PAGE {
+                return Ok(device.path());
             }
         }
         Err(LedgerError::DeviceNotFound)
     }
 
     #[cfg(target_os = "linux")]
-    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<CString, LedgerError> {
-        for device in api.devices() {
-            if device.vendor_id == LEDGER_VID {
-                let usage_page = get_usage_page(&device.path)?;
+    fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<&CStr, LedgerError> {
+        for device in api.device_list() {
+            if device.vendor_id() == LEDGER_VID {
+                let usage_page = get_usage_page(&device.path())?;
                 if usage_page == LEDGER_USAGE_PAGE {
-                    return Ok(device.path.clone());
+                    return Ok(device.path());
                 }
             }
         }
@@ -252,9 +248,7 @@ impl TransportNativeHID {
         }
     }
 
-    pub fn exchange(&self, command: APDUCommand) -> Result<APDUAnswer, LedgerError> {
-        extern crate hidapi;
-
+    pub fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, LedgerError> {
         let _guard = self.device_mutex.lock().unwrap();
 
         self.write_apdu(LEDGER_CHANNEL, &command.serialize())?;
@@ -381,16 +375,16 @@ mod integration_tests {
         let api_mutex = apiwrapper.get().expect("Error getting api_mutex");
         let api = api_mutex.lock().expect("Could not lock");
 
-        for device_info in api.devices() {
+        for device_info in api.device_list() {
             debug!(
                 "{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
-                device_info.path,
-                device_info.vendor_id,
-                device_info.product_id,
-                device_info.usage_page,
-                device_info.interface_number,
-                device_info.manufacturer_string.clone().unwrap_or_default(),
-                device_info.product_string.clone().unwrap_or_default()
+                device_info.path(),
+                device_info.vendor_id(),
+                device_info.product_id(),
+                device_info.usage_page(),
+                device_info.interface_number(),
+                device_info.manufacturer_string().unwrap_or_default(),
+                device_info.product_string().unwrap_or_default()
             );
         }
     }
@@ -434,17 +428,19 @@ mod integration_tests {
     fn exchange() {
         init_logging();
 
-        let mut ledger = TransportNativeHID::new().expect("Could not get a device");
+        let ledger = TransportNativeHID::new().expect("Could not get a device");
 
+        // use app info command that works on almost any app
+        // including dashboard
         let command = APDUCommand {
-            cla: 0x56,
-            ins: 0x00,
+            cla: 0xb0,
+            ins: 0x01,
             p1: 0x00,
             p2: 0x00,
             data: Vec::new(),
         };
 
-        let result = ledger.exchange(command).expect("Error during exchange");
+        let result = ledger.exchange(&command).expect("Error during exchange");
         debug!("{:?}", result);
     }
 }
