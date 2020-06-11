@@ -20,7 +20,7 @@
 // #![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
 
 use crate::errors::TransportError;
-use ledger_generic::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
+use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 
 use js_sys;
 use wasm_bindgen::JsValue;
