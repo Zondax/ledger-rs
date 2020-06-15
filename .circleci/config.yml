@@ -69,6 +69,7 @@ jobs:
       - run:
           name: build wasm
           command: |
+            source $HOME/.cargo/env
             cd tests && make test
       - run:
           name: install dependencies
