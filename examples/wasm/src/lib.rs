@@ -57,7 +57,7 @@ pub async fn device_info(transport_wrapper: TransportWrapper) -> Promise {
         data: Vec::new(),
     };
 
-    let response = apdu_transport.exchange(command).await.unwrap();
+    let response = apdu_transport.exchange(&command).await.unwrap();
     if response.retcode != APDUErrorCodes::NoError as u16 {
         // Panic ! Ledger returned an error code
         panic!();
