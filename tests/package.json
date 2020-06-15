@@ -1,9 +1,10 @@
 {
   "name": "ledger-test",
   "scripts": {
-    "test": "node test.js"
+    "test": "mocha test.js"
   },
   "dependencies": {
-    "@zondax/zemu": "^0.2.4"
+    "@zondax/zemu": "^0.2.4",
+    "mocha": "^8.0.1"
   }
 }
