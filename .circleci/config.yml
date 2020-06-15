@@ -55,8 +55,7 @@ jobs:
       - run:
           name: Install node + yarn
           command: |
-            nvm install 14.4.0
-            nvm use 14.4.0
+            nvm install 14
       - run:
           name: Install deps wasm
           command: |
@@ -71,15 +70,12 @@ jobs:
             source $HOME/.cargo/env
             cd tests && make test
       - run:
-          name: install dependencies
-          command: |
-            node --version
-            npm --version
-            cd tests && npm install
-      - run:
           name: test wasm (using Zemu demo app)
           command: |
-            cd tests && npm run test
+            nvm use 14
+            node --version
+            npm --version
+            cd tests && npm install && npm run test
 
 
   tests:
