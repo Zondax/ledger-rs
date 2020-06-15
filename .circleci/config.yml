@@ -35,6 +35,26 @@ jobs:
             cargo --version
             cargo build --release
 
+  test_wasm:
+    docker:
+      - image: zondax/rust-ci:latest
+    steps:
+      - checkout
+      - run: sudo apt-get install libudev-dev libusb-1.0-0-dev
+      - run:
+          name: build wasm
+          command: |
+            cd tests && make test
+      - run:
+          name: install dependencies
+          command: |
+            cd tests && yarn install
+      - run:
+          name: test wasm (using Zemu demo app)
+          command: |
+            cd tests && yarn test
+
+
   tests:
     docker:
       - image: zondax/rust-ci:latest
@@ -53,4 +73,5 @@ workflows:
   build_all:
     jobs:
       - build
+      - test_wasm
 #      - tests
