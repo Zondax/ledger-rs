@@ -23,8 +23,6 @@ describe("LEDGER TEST", function () {
     await Zemu.checkAndPullImage();
     await Zemu.stopAllEmuContainers();
 
-    console.log(__dirname);
-
     sim = new Zemu(path.join(__dirname,'/node_modules/@zondax/zemu/bin/demoApp/app.elf'));
     const APP_SEED = "equip will roof matter pink blind book anxiety banner elbow sun young";
     const sim_options = {
