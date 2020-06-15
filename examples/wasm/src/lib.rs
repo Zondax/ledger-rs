@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use js_sys::Promise;
 use serde::{Deserialize, Serialize};
 use ledger_transport::{TransportWrapperTrait, APDUTransport};
-use ledger_generic::{APDUAnswer, APDUCommand, APDUErrorCodes};
+use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCodes};
 
 /// Ledger Device Info Answer
 #[derive(Clone, Debug, Deserialize, Serialize)]
