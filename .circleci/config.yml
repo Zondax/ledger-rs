@@ -35,6 +35,49 @@ jobs:
             cargo --version
             cargo build --release
 
+  test_wasm_ledger:
+    machine:
+      image: ubuntu-1604:201903-01
+    working_directory: ~/repo
+    environment:
+      BASH_ENV: "/opt/circleci/.nvm/nvm.sh"
+    steps:
+      - run: sudo apt-get update -y && sudo apt-get install -y libusb-1.0.0 libudev-dev curl
+      - run:
+          name: Install rustup
+          command: |
+            curl https://sh.rustup.rs -o rustup.sh
+            chmod +x rustup.sh
+            ./rustup.sh -y
+            source $HOME/.cargo/env
+            rm rustup.sh
+      - checkout
+      - run:
+          name: Install node + yarn
+          command: |
+            nvm install 14
+      - run:
+          name: Install deps wasm
+          command: |
+            source $HOME/.cargo/env
+            curl -o /tmp/tmp.sh https://rustwasm.github.io/wasm-pack/installer/init.sh
+            chmod +x /tmp/tmp.sh
+            /tmp/tmp.sh -f
+      - run: docker pull zondax/builder-zemu
+      - run:
+          name: build wasm
+          command: |
+            source $HOME/.cargo/env
+            cd tests && make test
+      - run:
+          name: test wasm (using Zemu demo app)
+          command: |
+            nvm use 14
+            node --version
+            npm --version
+            cd tests && npm install && npm run test
+
+
   tests:
     docker:
       - image: zondax/rust-ci:latest
@@ -53,4 +96,5 @@ workflows:
   build_all:
     jobs:
       - build
+      - test_wasm_ledger
 #      - tests

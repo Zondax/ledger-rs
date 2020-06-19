@@ -1,0 +1,15 @@
+{
+  "name": "ledger-browser-example",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack-dev-server",
+    "certificate": "openssl req -nodes -config certs/openssl.cnf -new -x509 -keyout certs/server.key -out certs/server.cert; openssl x509 -in certs/server.cert -out certs/cert.pem -outform PEM"
+  },
+  "dependencies": {
+    "@ledgerhq/hw-transport-u2f": "^5.15.0",
+    "copy-webpack-plugin": "^6.0.1",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.11.0"
+  }
+}
