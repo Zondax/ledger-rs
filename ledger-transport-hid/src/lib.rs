@@ -89,7 +89,7 @@ pub struct TransportNativeHID {
     device_mutex: Mutex<i32>,
 }
 
-unsafe impl Sync for HidApiWrapper {}
+unsafe impl Sync for TransportNativeHID {}
 unsafe impl Send for HidApiWrapper {}
 
 lazy_static! {
