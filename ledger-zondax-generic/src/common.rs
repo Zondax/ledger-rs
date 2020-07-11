@@ -19,8 +19,8 @@
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
 
-use crate::LedgerError;
-use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCodes};
+use crate::LedgerAppError;
+use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 use ledger_transport::errors::TransportError;
 use ledger_transport::APDUTransport;
 use serde::{Deserialize, Serialize};
@@ -107,7 +107,7 @@ pub struct DeviceInfo {
 }
 
 /// Retrieve the device info
-pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInfo, LedgerError> {
+pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInfo, LedgerAppError> {
     let command = APDUCommand {
         cla: CLA_DEVICE_INFO,
         ins: INS_DEVICE_INFO,
@@ -118,7 +118,7 @@ pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInf
 
     let response = apdu_transport.exchange(&command).await?;
     if response.retcode != APDUErrorCodes::NoError as u16 {
-        return Err(LedgerError::TransportError(
+        return Err(LedgerAppError::TransportError(
             TransportError::APDUExchangeError,
         ));
     }
@@ -146,8 +146,8 @@ pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInf
     let mut target_id = [Default::default(); 4];
     target_id.copy_from_slice(target_id_slice);
 
-    let se_version = str::from_utf8(se_version_bytes).map_err(|_e| LedgerError::Utf8)?;
-    let mcu_version = str::from_utf8(tmp).map_err(|_e| LedgerError::Utf8)?;
+    let se_version = str::from_utf8(se_version_bytes).map_err(|_e| LedgerAppError::Utf8)?;
+    let mcu_version = str::from_utf8(tmp).map_err(|_e| LedgerAppError::Utf8)?;
 
     let device_info = DeviceInfo {
         target_id,
@@ -160,7 +160,7 @@ pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInf
 }
 
 /// Retrieve the app info
-pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, LedgerError> {
+pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, LedgerAppError> {
     let command = APDUCommand {
         cla: CLA_APP_INFO,
         ins: INS_APP_INFO,
@@ -171,13 +171,14 @@ pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, Led
 
     let response = apdu_transport.exchange(&command).await?;
     if response.retcode != APDUErrorCodes::NoError as u16 {
-        return Err(LedgerError::TransportError(
-            TransportError::APDUExchangeError,
+        return Err(LedgerAppError::AppSpecific(
+            response.retcode,
+            map_apdu_error_description(response.retcode).to_string(),
         ));
     }
 
     if response.data[0] != 1 {
-        return Err(LedgerError::InvalidFormatID);
+        return Err(LedgerAppError::InvalidFormatID);
     }
 
     let app_name_len: usize = response.data[1] as usize;
@@ -194,8 +195,8 @@ pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, Led
     idx += 1;
     let flags_value = response.data[idx];
 
-    let app_name = str::from_utf8(app_name_bytes).map_err(|_e| LedgerError::Utf8)?;
-    let app_version = str::from_utf8(app_version_bytes).map_err(|_e| LedgerError::Utf8)?;
+    let app_name = str::from_utf8(app_name_bytes).map_err(|_e| LedgerAppError::Utf8)?;
+    let app_version = str::from_utf8(app_version_bytes).map_err(|_e| LedgerAppError::Utf8)?;
 
     let app_info = AppInfo {
         app_name: app_name.to_string(),
@@ -212,7 +213,10 @@ pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, Led
 }
 
 /// Retrieve the app version
-pub async fn get_version(cla: u8, apdu_transport: &APDUTransport) -> Result<Version, LedgerError> {
+pub async fn get_version(
+    cla: u8,
+    apdu_transport: &APDUTransport,
+) -> Result<Version, LedgerAppError> {
     let command = APDUCommand {
         cla,
         ins: INS_GET_VERSION,
@@ -223,7 +227,7 @@ pub async fn get_version(cla: u8, apdu_transport: &APDUTransport) -> Result<Vers
 
     let response = apdu_transport.exchange(&command).await?;
     if response.retcode != APDUErrorCodes::NoError as u16 {
-        return Err(LedgerError::InvalidVersion);
+        return Err(LedgerAppError::InvalidVersion);
     }
 
     let version = match response.data.len() {
@@ -273,7 +277,7 @@ pub async fn get_version(cla: u8, apdu_transport: &APDUTransport) -> Result<Vers
                 response.data[11],
             ],
         },
-        _ => return Err(LedgerError::InvalidVersion),
+        _ => return Err(LedgerAppError::InvalidVersion),
     };
     Ok(version)
 }
@@ -283,16 +287,16 @@ pub async fn send_chunks(
     apdu_transport: &APDUTransport,
     start_command: &APDUCommand,
     message: &[u8],
-) -> Result<APDUAnswer, LedgerError> {
+) -> Result<APDUAnswer, LedgerAppError> {
     let chunks = message.chunks(USER_MESSAGE_CHUNK_SIZE);
     match chunks.len() {
-        0 => return Err(LedgerError::InvalidEmptyMessage),
-        n if n > 255 => return Err(LedgerError::InvalidMessageSize),
+        0 => return Err(LedgerAppError::InvalidEmptyMessage),
+        n if n > 255 => return Err(LedgerAppError::InvalidMessageSize),
         _ => (),
     }
 
     if start_command.p1 != ChunkPayloadType::Init as u8 {
-        return Err(LedgerError::InvalidChunkPayloadType);
+        return Err(LedgerAppError::InvalidChunkPayloadType);
     }
 
     let mut response = apdu_transport.exchange(start_command).await?;

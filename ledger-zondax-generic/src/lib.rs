@@ -19,3 +19,4 @@ mod errors;
 
 pub use common::*;
 pub use errors::*;
+pub use ledger_apdu::map_apdu_error_description;
