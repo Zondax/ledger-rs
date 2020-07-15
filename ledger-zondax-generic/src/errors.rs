@@ -13,14 +13,13 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-
 use ledger_transport::errors::TransportError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Filecoin App Error
+/// App Error
 #[derive(Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
-pub enum LedgerError {
+pub enum LedgerAppError {
     /// Invalid version error
     #[error("This version is not supported")]
     InvalidVersion,
@@ -61,6 +60,6 @@ pub enum LedgerError {
     #[error("Couldn't encode string to HEX")]
     HexEncode,
     /// Application specific error
-    #[error("App Error: | {0}")]
-    AppSpecific(String),
+    #[error("App Error: | {0} {1}")]
+    AppSpecific(u16, String),
 }

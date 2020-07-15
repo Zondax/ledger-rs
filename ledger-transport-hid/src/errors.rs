@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2020 Zondax GmbH
+*   (c) 2018 Zondax GmbH
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,22 +13,26 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Transport Error
-#[derive(Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
-pub enum TransportError {
-    /// Transport specific error
-    #[error("APDU Exchange Error")]
-    APDUExchangeError,
-    /// Response was too short (< 2 bytes)
-    #[error("APDU Response was too short")]
-    ResponseTooShort,
-    /// Javscript error
-    #[error("Javascript error : `[{0}] {1}`")]
-    JavascriptError(String, String),
-    /// Error Unknown
-    #[error("Unknown Error")]
-    UnknownError,
+#[derive(Error, Debug)]
+pub enum LedgerHIDError {
+    /// Device not found error
+    #[error("Ledger device not found")]
+    DeviceNotFound,
+    /// Communication error
+    #[error("Ledger device: communication error `{0}`")]
+    Comm(&'static str),
+    /// Ioctl error
+    #[error("Ledger device: Ioctl error")]
+    Ioctl(#[from] nix::Error),
+    /// i/o error
+    #[error("Ledger device: i/o error")]
+    Io(#[from] std::io::Error),
+    /// HID error
+    #[error("Ledger device: Io error")]
+    Hid(#[from] hidapi::HidError),
+    /// UT8F error
+    #[error("Ledger device: UTF8 error")]
+    UTF8(#[from] std::str::Utf8Error),
 }
