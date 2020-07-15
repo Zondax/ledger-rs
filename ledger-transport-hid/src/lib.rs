@@ -27,7 +27,7 @@ use cfg_if::cfg_if;
 use hidapi::HidDevice;
 use lazy_static::lazy_static;
 use ledger_apdu::{APDUAnswer, APDUCommand};
-use log::debug;
+use log::info;
 use std::cell::RefCell;
 use std::ffi::CStr;
 use std::io::Cursor;
@@ -155,7 +155,7 @@ impl TransportNativeHID {
             buffer[4] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
             buffer[5..5 + chunk.len()].copy_from_slice(chunk);
 
-            debug!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
+            info!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
 
             let result = self.device.write(&buffer);
 
@@ -213,7 +213,7 @@ impl TransportNativeHID {
 
             let new_chunk = &buffer[rdr.position() as usize..end_p];
 
-            debug!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            info!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
 
             apdu_answer.extend_from_slice(new_chunk);
 
@@ -329,7 +329,7 @@ if #[cfg(target_os = "linux")] {
 #[cfg(test)]
 mod integration_tests {
     use crate::{APDUCommand, TransportNativeHID, HIDAPIWRAPPER};
-    use log::debug;
+    use log::info;
     use serial_test;
 
     fn init_logging() {
@@ -345,7 +345,7 @@ mod integration_tests {
         let api = api_mutex.lock().expect("Could not lock");
 
         for device_info in api.device_list() {
-            debug!(
+            info!(
                 "{:#?} - {:#x}/{:#x}/{:#x}/{:#x} {:#} {:#}",
                 device_info.path(),
                 device_info.vendor_id(),
@@ -369,7 +369,7 @@ mod integration_tests {
         // TODO: Extend to discover two devices
         let ledger_path =
             TransportNativeHID::find_ledger_device_path(&api).expect("Could not find a device");
-        debug!("{:?}", ledger_path);
+        info!("{:?}", ledger_path);
     }
 
     #[test]
@@ -410,6 +410,6 @@ mod integration_tests {
         };
 
         let result = ledger.exchange(&command).expect("Error during exchange");
-        debug!("{:?}", result);
+        info!("{:?}", result);
     }
 }
