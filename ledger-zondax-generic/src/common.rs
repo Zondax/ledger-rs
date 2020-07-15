@@ -300,6 +300,12 @@ pub async fn send_chunks(
     }
 
     let mut response = apdu_transport.exchange(start_command).await?;
+    if response.retcode != 0x9000 {
+        return Err(LedgerAppError::AppSpecific(
+            response.retcode,
+            map_apdu_error_description(response.retcode).to_string(),
+        ));
+    }
 
     // Send message chunks
     let last_chunk_index = chunks.len() - 1;
@@ -318,6 +324,12 @@ pub async fn send_chunks(
         };
 
         response = apdu_transport.exchange(&command).await?;
+        if response.retcode != 0x9000 {
+            return Err(LedgerAppError::AppSpecific(
+                response.retcode,
+                map_apdu_error_description(response.retcode).to_string(),
+            ));
+        }
     }
 
     Ok(response)
