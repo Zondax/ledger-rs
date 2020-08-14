@@ -1,14 +1,25 @@
 [package]
 name = "ledger-zondax-generic"
-version = "0.1.0"
+description = "Ledger Hardware Wallet - Common APDU Protocol Types"
+version = "0.4.0"
+license = "Apache-2.0"
 authors = ["Zondax GmbH <info@zondax.ch>"]
+homepage = "https://github.com/zondax/ledger-rs"
+repository = "https://github.com/zondax/ledger-rs"
+readme = "README.md"
+categories  = ["authentication", "cryptography"]
+keywords = ["ledger", "nano", "blue", "apdu"]
 edition = "2018"
+autobenches = false
+
+[badges]
+circle-ci = { repository = "zondax/ledger-rs" }
 
 [lib]
 name = "ledger_zondax_generic"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-ledger-apdu = { path = "../ledger-apdu"}
-ledger-transport = { path = "../ledger-transport"}
+ledger-apdu = { path = "../ledger-apdu", version = "0.4.0"}
+ledger-transport = { path = "../ledger-transport", version = "0.4.0"}
 thiserror = "1.0"

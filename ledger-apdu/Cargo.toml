@@ -1,9 +1,19 @@
 [package]
 name = "ledger-apdu"
-version = "0.1.0"
+description = "Ledger Hardware Wallet - Common APDU Protocol Types"
+version = "0.4.0"
+license = "Apache-2.0"
 authors = ["Zondax GmbH <info@zondax.ch>"]
+homepage = "https://github.com/zondax/ledger-rs"
+repository = "https://github.com/zondax/ledger-rs"
+readme = "README.md"
+categories  = ["authentication", "cryptography"]
+keywords = ["ledger", "nano", "blue", "apdu"]
 edition = "2018"
+autobenches = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[badges]
+circle-ci = { repository = "zondax/ledger-rs" }
+
 [lib]
 name = "ledger_apdu"
