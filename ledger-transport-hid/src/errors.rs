@@ -25,7 +25,7 @@ pub enum LedgerHIDError {
     Comm(&'static str),
     /// Ioctl error
     #[error("Ledger device: Ioctl error")]
-    Ioctl(#[from] nix::Error),
+    Ioctl(#[from] crate::nix::Error),
     /// i/o error
     #[error("Ledger device: i/o error")]
     Io(#[from] std::io::Error),
