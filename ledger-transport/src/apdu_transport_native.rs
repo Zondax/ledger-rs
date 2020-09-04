@@ -21,24 +21,18 @@
 #![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
 
 use crate::errors::TransportError;
-use crate::errors::TransportError::APDUExchangeError;
-use futures::future;
+use crate::Exchange;
 use ledger_apdu::{APDUAnswer, APDUCommand};
 
 /// Transport struct for non-wasm arch
-pub struct APDUTransport {
+pub struct APDUTransport<T: Exchange> {
     /// Native rust transport
-    pub transport_wrapper: ledger::TransportNativeHID,
+    pub transport_wrapper: T,
 }
 
-impl APDUTransport {
+impl<T: Exchange> APDUTransport<T> {
     /// Use to talk to the ledger device
     pub async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
-        let call = self
-            .transport_wrapper
-            .exchange(command)
-            .map_err(|_| APDUExchangeError)?;
-
-        future::ready(Ok(call)).await
+        self.transport_wrapper.exchange(command).await
     }
 }

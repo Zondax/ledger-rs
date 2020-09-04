@@ -22,7 +22,7 @@
 use crate::LedgerAppError;
 use ledger_apdu::{map_apdu_error_description, APDUAnswer, APDUCommand, APDUErrorCodes};
 use ledger_transport::errors::TransportError;
-use ledger_transport::APDUTransport;
+use ledger_transport::{APDUTransport, Exchange};
 use serde::{Deserialize, Serialize};
 use std::str;
 
@@ -107,7 +107,9 @@ pub struct DeviceInfo {
 }
 
 /// Retrieve the device info
-pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInfo, LedgerAppError> {
+pub async fn get_device_info<T: Exchange>(
+    apdu_transport: &APDUTransport<T>,
+) -> Result<DeviceInfo, LedgerAppError> {
     let command = APDUCommand {
         cla: CLA_DEVICE_INFO,
         ins: INS_DEVICE_INFO,
@@ -160,7 +162,9 @@ pub async fn get_device_info(apdu_transport: &APDUTransport) -> Result<DeviceInf
 }
 
 /// Retrieve the app info
-pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, LedgerAppError> {
+pub async fn get_app_info<T: Exchange>(
+    apdu_transport: &APDUTransport<T>,
+) -> Result<AppInfo, LedgerAppError> {
     let command = APDUCommand {
         cla: CLA_APP_INFO,
         ins: INS_APP_INFO,
@@ -213,9 +217,9 @@ pub async fn get_app_info(apdu_transport: &APDUTransport) -> Result<AppInfo, Led
 }
 
 /// Retrieve the app version
-pub async fn get_version(
+pub async fn get_version<T: Exchange>(
     cla: u8,
-    apdu_transport: &APDUTransport,
+    apdu_transport: &APDUTransport<T>,
 ) -> Result<Version, LedgerAppError> {
     let command = APDUCommand {
         cla,
@@ -283,8 +287,8 @@ pub async fn get_version(
 }
 
 /// Stream a long request in chunks
-pub async fn send_chunks(
-    apdu_transport: &APDUTransport,
+pub async fn send_chunks<T: Exchange>(
+    apdu_transport: &APDUTransport<T>,
     start_command: &APDUCommand,
     message: &[u8],
 ) -> Result<APDUAnswer, LedgerAppError> {
