@@ -1,5 +1,7 @@
 mod errors;
+#[rustfmt::skip]
 mod zemu;
+#[rustfmt::skip]
 mod zemu_grpc;
 
 use grpc::prelude::*;
