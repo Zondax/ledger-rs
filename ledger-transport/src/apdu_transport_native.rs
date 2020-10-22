@@ -25,12 +25,19 @@ use crate::Exchange;
 use ledger_apdu::{APDUAnswer, APDUCommand};
 
 /// Transport struct for non-wasm arch
-pub struct APDUTransport<T: Exchange> {
+pub struct APDUTransport {
     /// Native rust transport
-    pub transport_wrapper: T,
+    pub transport_wrapper: Box<dyn Exchange>,
 }
 
-impl<T: Exchange> APDUTransport<T> {
+impl APDUTransport {
+    /// Creates a native rust transport
+    pub fn new(wrapper: impl Exchange + 'static) -> Self {
+        Self {
+            transport_wrapper: Box::new(wrapper),
+        }
+    }
+
     /// Use to talk to the ledger device
     pub async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
         self.transport_wrapper.exchange(command).await
