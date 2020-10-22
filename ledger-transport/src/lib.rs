@@ -41,6 +41,9 @@ pub mod apdu_transport_native;
 pub use crate::apdu_transport_native::APDUTransport;
 use crate::errors::TransportError;
 
+
+
+
 /// Use to talk to the ledger device
 #[trait_async]
 pub trait Exchange: Send + Sync {
@@ -69,6 +72,15 @@ impl Exchange for ledger_zemu::TransportZemuGrpc {
 
 #[trait_async]
 impl Exchange for ledger_zemu::TransportZemuHttp {
+    async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
+        self.exchange(command)
+            .await
+            .map_err(|_| TransportError::APDUExchangeError)
+    }
+}
+
+#[trait_async]
+impl Exchange for ledger_tcp::TransportTCP {
     async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
         self.exchange(command)
             .await

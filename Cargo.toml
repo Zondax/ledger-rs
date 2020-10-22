@@ -4,7 +4,8 @@ members = [
     "ledger-transport",
     "ledger-transport-hid",
     "ledger-transport-zemu",
-    "ledger-zondax-generic"
+    "ledger-zondax-generic",
+    "ledger-transport-tcp"
 ]
 
 exclude = [
