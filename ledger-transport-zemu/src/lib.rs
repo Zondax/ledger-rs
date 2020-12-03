@@ -1,8 +1,6 @@
 mod errors;
-#[rustfmt::skip]
-mod zemu;
-#[rustfmt::skip]
-mod zemu_grpc;
+
+include!(env!("PROTO_MOD_RS"));
 
 use grpc::prelude::*;
 use grpc::ClientConf;
