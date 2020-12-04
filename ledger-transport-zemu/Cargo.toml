@@ -1,13 +1,13 @@
 [package]
 name = "ledger-transport-zemu"
-description = "Ledger Zemu Wallet - Zemu Transport"
+description = "Ledger Hardware Wallet - Zemu Transport"
 version = "0.7.0"
 license = "Apache-2.0"
 authors = ["Linfeng Yuan <linfeng@crypto.com>"]
 homepage = "https://github.com/zondax/ledger-rs"
 repository = "https://github.com/zondax/ledger-rs"
 readme = "README.md"
-categories  = ["authentication", "cryptography", "zemu"]
+categories  = ["authentication", "cryptography"]
 keywords = ["ledger", "nano", "blue", "apdu", "zemu"]
 edition = "2018"
 autobenches = false
@@ -31,4 +31,5 @@ ledger-apdu = { path = "../ledger-apdu", version = "0.7.0" }
 
 [build-dependencies]
 protoc-rust-grpc = "0.8.1"
+glob = "0.3.0"
 
