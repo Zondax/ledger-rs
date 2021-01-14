@@ -68,6 +68,7 @@ pub mod exchange {
         }
     }
 
+    #[cfg(feature = "zemu")]
     #[trait_async]
     impl Exchange for ledger_zemu::TransportZemuGrpc {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
@@ -77,6 +78,7 @@ pub mod exchange {
         }
     }
 
+    #[cfg(feature = "zemu")]
     #[trait_async]
     impl Exchange for ledger_zemu::TransportZemuHttp {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {

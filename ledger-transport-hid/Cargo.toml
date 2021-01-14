@@ -1,7 +1,7 @@
 [package]
 name = "ledger-transport-hid"
 description = "Ledger Hardware Wallet - HID Transport"
-version = "0.7.0"
+version = "0.8.0"
 license = "Apache-2.0"
 authors = ["Zondax GmbH <info@zondax.ch>"]
 homepage = "https://github.com/zondax/ledger-rs"
@@ -25,7 +25,7 @@ thiserror = "1.0.20"
 cfg-if = "0.1.10"
 lazy_static = "1.4.0"
 hex = "0.4.2"
-ledger-apdu = { path = "../ledger-apdu", version = "0.7.0" }
+ledger-apdu = { path = "../ledger-apdu", version = "0.8.0" }
 log = "0.4.8"
 
 [target.'cfg(target_os = "linux")'.dependencies]
