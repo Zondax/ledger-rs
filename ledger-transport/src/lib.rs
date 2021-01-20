@@ -70,17 +70,7 @@ pub mod exchange {
 
     #[cfg(feature = "zemu")]
     #[trait_async]
-    impl Exchange for ledger_zemu::TransportZemuGrpc {
-        async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
-            self.exchange(command)
-                .await
-                .map_err(|_| TransportError::APDUExchangeError)
-        }
-    }
-
-    #[cfg(feature = "zemu")]
-    #[trait_async]
-    impl Exchange for ledger_zemu::TransportZemuHttp {
+    impl Exchange for ledger_tcp::TransportTCP {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
             self.exchange(command)
                 .await
