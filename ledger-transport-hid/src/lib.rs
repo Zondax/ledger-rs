@@ -51,7 +51,10 @@ if #[cfg(target_os = "linux")] {
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
 const LEDGER_CHANNEL: u16 = 0x0101;
-const LEDGER_PACKET_SIZE: u8 = 64;
+// for Windows compatability, we prepend the buffer with a 0x00
+// so the actual buffer is 64 bytes
+const LEDGER_PACKET_WRITE_SIZE: u8 = 65;
+const LEDGER_PACKET_READ_SIZE: u8 = 64;
 const LEDGER_TIMEOUT: i32 = 10_000_000;
 
 struct HidApiWrapper {
@@ -142,18 +145,20 @@ impl TransportNativeHID {
         in_data.push((command_length & 0xFF) as u8);
         in_data.extend_from_slice(&apdu_command);
 
-        let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
-        buffer[0] = ((channel >> 8) & 0xFF) as u8; // channel big endian
-        buffer[1] = (channel & 0xFF) as u8; // channel big endian
-        buffer[2] = 0x05u8;
+        let mut buffer = vec![0u8; LEDGER_PACKET_WRITE_SIZE as usize];
+        // Windows platform requires 0x00 prefix and Linux/Mac tolerate this as well
+        buffer[0] = 0x00;
+        buffer[1] = ((channel >> 8) & 0xFF) as u8; // channel big endian
+        buffer[2] = (channel & 0xFF) as u8; // channel big endian
+        buffer[3] = 0x05u8;
 
         for (sequence_idx, chunk) in in_data
-            .chunks((LEDGER_PACKET_SIZE - 5) as usize)
+            .chunks((LEDGER_PACKET_WRITE_SIZE - 6) as usize)
             .enumerate()
         {
-            buffer[3] = ((sequence_idx >> 8) & 0xFF) as u8; // sequence_idx big endian
-            buffer[4] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
-            buffer[5..5 + chunk.len()].copy_from_slice(chunk);
+            buffer[4] = ((sequence_idx >> 8) & 0xFF) as u8; // sequence_idx big endian
+            buffer[5] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
+            buffer[6..6 + chunk.len()].copy_from_slice(chunk);
 
             info!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
 
@@ -173,8 +178,8 @@ impl TransportNativeHID {
         Ok(1)
     }
 
-    fn read_apdu(&self, _channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, LedgerHIDError> {
-        let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
+    fn read_apdu(&self, channel: u16, apdu_answer: &mut Vec<u8>) -> Result<usize, LedgerHIDError> {
+        let mut buffer = vec![0u8; LEDGER_PACKET_READ_SIZE as usize];
         let mut sequence_idx = 0u16;
         let mut expected_apdu_len = 0usize;
 
@@ -187,17 +192,16 @@ impl TransportNativeHID {
 
             let mut rdr = Cursor::new(&buffer);
 
-            let _rcv_channel = rdr.read_u16::<BigEndian>()?;
-            let _rcv_tag = rdr.read_u8()?;
+            let rcv_channel = rdr.read_u16::<BigEndian>()?;
+            let rcv_tag = rdr.read_u8()?;
             let rcv_seq_idx = rdr.read_u16::<BigEndian>()?;
 
-            // TODO: Check why windows returns a different channel/tag
-            //        if rcv_channel != channel {
-            //            return Err(Box::from(format!("Invalid channel: {}!={}", rcv_channel, channel )));
-            //        }
-            //        if rcv_tag != 0x05u8 {
-            //            return Err(Box::from("Invalid tag"));
-            //        }
+            if rcv_channel != channel {
+                return Err(LedgerHIDError::Comm("Invalid channel"));
+            }
+            if rcv_tag != 0x05u8 {
+                return Err(LedgerHIDError::Comm("Invalid tag"));
+            }
 
             if rcv_seq_idx != sequence_idx {
                 return Err(LedgerHIDError::Comm("Invalid sequence idx"));
