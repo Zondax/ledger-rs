@@ -21,7 +21,7 @@ extern crate serial_test;
 
 mod errors;
 
-use crate::errors::LedgerHIDError;
+pub use crate::errors::LedgerHIDError;
 use byteorder::{BigEndian, ReadBytesExt};
 use cfg_if::cfg_if;
 use hidapi::HidDevice;
