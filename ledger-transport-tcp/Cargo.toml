@@ -1,0 +1,42 @@
+[package]
+name = "ledger-transport-tcp"
+description = "Ledger Hardware Wallet - TCP Transport"
+version = "0.7.0"
+license = "Apache-2.0"
+authors = ["Louis Thiery <thiery.louis@gmail.com>"]
+homepage = "https://github.com/zondax/ledger-rs"
+repository = "https://github.com/zondax/ledger-rs"
+readme = "README.md"
+categories  = ["authentication", "cryptography"]
+keywords = ["ledger", "nano", "blue", "apdu"]
+edition = "2018"
+autobenches = false
+
+[badges]
+circle-ci = { repository = "zondax/ledger-rs" }
+
+[lib]
+name = "ledger_tcp"
+
+[dependencies]
+byteorder = "1.3.4"
+libc = "0.2.72"
+thiserror = "1.0.20"
+cfg-if = "0.1.10"
+lazy_static = "1.4.0"
+hex = "0.4.2"
+ledger-apdu = { path = "../ledger-apdu", version = "0.7.0" }
+log = "0.4.8"
+tokio = {version = "1.2", features = ["full"]}
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = "0.17.0"
+
+[dependencies.hidapi]
+version = "1.2.3"
+default-features = false
+features=["linux-static-hidraw"]
+
+[dev-dependencies]
+serial_test = "0.4.0"
+env_logger = "0.7.1"
