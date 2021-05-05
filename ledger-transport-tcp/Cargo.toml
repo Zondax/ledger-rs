@@ -19,15 +19,11 @@ circle-ci = { repository = "zondax/ledger-rs" }
 name = "ledger_tcp"
 
 [dependencies]
-byteorder = "1.3.4"
-libc = "0.2.72"
-thiserror = "1.0.20"
-cfg-if = "0.1.10"
-lazy_static = "1.4.0"
-hex = "0.4.2"
+byteorder = "1.3"
+thiserror = "1.0"
 ledger-apdu = { path = "../ledger-apdu", version = "0.7.0" }
-log = "0.4.8"
-tokio = {version = "1.2", features = ["full"]}
+log = "0.4"
+tokio = {version = "1", features = ["full"]}
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = "0.17.0"

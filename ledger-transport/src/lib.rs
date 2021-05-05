@@ -40,11 +40,18 @@ pub use crate::apdu_transport_native::APDUTransport;
 #[cfg(not(target_arch = "wasm32"))]
 pub use exchange::Exchange;
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "transport-hid"))]
+pub use ledger::{TransportNativeHID, LedgerHIDError};
+#[cfg(all(not(target_arch = "wasm32"), feature = "transport-tcp"))]
+pub use ledger_tcp::{TransportTcp, TransportTcpError};
+#[cfg(all(not(target_arch = "wasm32"), feature = "transport-zemu"))]
+pub use ledger_zemu::{TransportZemuGrpc, TransportZemuHttp, LedgerZemuError};
+
 #[cfg(not(target_arch = "wasm32"))]
 pub mod exchange {
     //! Some implementation on transport typos for the Exchange trait
+    use super::*;
 
-    use futures::future;
     use trait_async::trait_async;
 
     use crate::errors::TransportError;
@@ -58,9 +65,11 @@ pub mod exchange {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError>;
     }
 
+    #[cfg(feature = "transport-hid")]
     #[trait_async]
-    impl Exchange for ledger::TransportNativeHID {
+    impl Exchange for TransportNativeHID {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
+            use futures::future;
             let call = self
                 .exchange(command)
                 .map_err(|_| TransportError::APDUExchangeError)?;
@@ -68,8 +77,9 @@ pub mod exchange {
         }
     }
 
+    #[cfg(feature = "transport-zemu")]
     #[trait_async]
-    impl Exchange for ledger_zemu::TransportZemuGrpc {
+    impl Exchange for TransportZemuGrpc {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
             self.exchange(command)
                 .await
@@ -77,8 +87,9 @@ pub mod exchange {
         }
     }
 
+    #[cfg(feature = "transport-zemu")]
     #[trait_async]
-    impl Exchange for ledger_zemu::TransportZemuHttp {
+    impl Exchange for TransportZemuHttp {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
             self.exchange(command)
                 .await
@@ -86,8 +97,9 @@ pub mod exchange {
         }
     }
 
+    #[cfg(feature = "transport-tcp")]
     #[trait_async]
-    impl Exchange for ledger_tcp::TransportTcp {
+    impl Exchange for TransportTcp {
         async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
             use ledger_tcp::TransportTcp;
             TransportTcp::exchange(self, command)

@@ -16,7 +16,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum LedgerTcpError {
+pub enum TransportTcpError {
     /// Connection refused error
     #[error("TCP Connection Refused")]
     ConnectionRefused,
@@ -28,15 +28,15 @@ pub enum LedgerTcpError {
     ReadWouldBlock,
 }
 
-impl LedgerTcpError {
-    pub(crate) fn connection_refused() -> LedgerTcpError {
-        LedgerTcpError::ConnectionRefused
+impl TransportTcpError {
+    pub(crate) fn connection_refused() -> TransportTcpError {
+        TransportTcpError::ConnectionRefused
     }
-    pub(crate) fn connection_closed() -> LedgerTcpError {
-        LedgerTcpError::ConnectionClosed
+    pub(crate) fn connection_closed() -> TransportTcpError {
+        TransportTcpError::ConnectionClosed
     }
-    pub(crate) fn read_would_block() -> LedgerTcpError {
-        LedgerTcpError::ReadWouldBlock
+    pub(crate) fn read_would_block() -> TransportTcpError {
+        TransportTcpError::ReadWouldBlock
     }
 
 }

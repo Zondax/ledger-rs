@@ -19,13 +19,13 @@ circle-ci = { repository = "zondax/ledger-rs" }
 name = "ledger_zemu"
 
 [dependencies]
-thiserror = "1.0.20"
-log = "0.4.11"
+thiserror = "1.0"
+log = "0.4"
 protobuf = "2"
-grpc = "0.8.1"
-grpc-protobuf = "0.8.1"
+grpc = "0.8"
+grpc-protobuf = "0.8"
 reqwest = { version = "0.10", features = ["json"]}
-hex = "0.4.2"
+hex = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 ledger-apdu = { path = "../ledger-apdu", version = "0.7.0" }
 
