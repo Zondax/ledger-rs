@@ -14,10 +14,9 @@
 *  limitations under the License.
 ********************************************************************************/
 
-// #![deny(warnings, trivial_casts, trivial_numeric_casts)]
-// #![deny(unused_import_braces, unused_qualifications)]
-// #![deny(missing_docs)]
-// #![doc(html_root_url = "https://docs.rs/ledger-filecoin/0.1.0")]
+#![deny(warnings, trivial_casts, trivial_numeric_casts)]
+#![deny(unused_import_braces, unused_qualifications)]
+#![deny(missing_docs)]
 
 use crate::errors::TransportError;
 use ledger_apdu::{APDUAnswer, APDUCommand};
