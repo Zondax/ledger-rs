@@ -137,14 +137,12 @@ jobs:
           submodules: true
       - run: sudo apt-get install -y libudev-dev libusb-1.0-0-dev protobuf-compiler
 
-      - name: Install nvm
+      - name: Install nvm, node, yarn
         run: |
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
           export NVM_DIR="$HOME/.nvm"
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-
-      - name: Install node + yarn
-        run: nvm install 14
+          nvm install 14
 
       - name: rust cache
         uses: Swatinem/rust-cache@v1
@@ -162,6 +160,8 @@ jobs:
 
       - name: test wasm (using Zemu demo app)
         run: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
           nvm use 14
           npm install
           npm run test
