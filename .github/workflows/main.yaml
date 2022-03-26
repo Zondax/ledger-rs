@@ -120,7 +120,7 @@ jobs:
 
       - name: test --all-features
         run: |
-          cargo test --all --all-features -- --test-threads 1
+          cargo test --all --all-features -- --test-threads 1 --skip integration
 
   test_wasm_ledger:
     runs-on: ubuntu-latest
@@ -136,6 +136,9 @@ jobs:
         with:
           submodules: true
       - run: sudo apt-get install -y libudev-dev libusb-1.0-0-dev protobuf-compiler
+
+      - name: Install nvm
+        run: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
 
       - name: Install node + yarn
         run: nvm install 14
