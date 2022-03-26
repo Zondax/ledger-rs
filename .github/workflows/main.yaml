@@ -138,7 +138,10 @@ jobs:
       - run: sudo apt-get install -y libudev-dev libusb-1.0-0-dev protobuf-compiler
 
       - name: Install nvm
-        run: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+        run: |
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 
       - name: Install node + yarn
         run: nvm install 14
