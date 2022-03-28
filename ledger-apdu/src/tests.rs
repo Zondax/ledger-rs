@@ -54,17 +54,27 @@ fn apdu_answer_success() {
     let code = answer.error_code().expect("valid error code");
     assert_eq!(code, APDUErrorCode::NoError);
 
-    assert_eq!(answer.data, &APDU_RESPONSE[..4]);
+    assert_eq!(answer.apdu_data(), &APDU_RESPONSE[..4]);
+}
+
+#[test]
+fn apdu_answer_vec() {
+    let answer = APDUAnswer::from_answer(APDU_RESPONSE.to_vec()).expect("valid answer length >= 2");
+
+    let code = answer.error_code().expect("valid error code");
+    assert_eq!(code, APDUErrorCode::NoError);
+
+    assert_eq!(answer.apdu_data(), &APDU_RESPONSE[..4]);
 }
 
 #[test]
 fn apdu_answer_error() {
-    let answer = APDUAnswer::from_answer(&[0x00, 0x64]).expect("valid answer length >= 2");
+    let answer = APDUAnswer::from_answer(&[0x00, 0x64][..]).expect("valid answer length >= 2");
 
     let code = answer.error_code().expect("valid error code");
     assert_eq!(code, APDUErrorCode::ExecutionError);
 
-    assert_eq!(answer.data, &[]);
+    assert_eq!(answer.apdu_data(), &[]);
 }
 
 #[test]
@@ -74,12 +84,12 @@ fn apdu_answer_unknown() {
     let code = answer.error_code().expect_err("invalid error code");
     assert_eq!(code, 0xEFBE);
 
-    assert_eq!(answer.data, &[0xDE, 0xAD]);
+    assert_eq!(answer.apdu_data(), &[0xDE, 0xAD]);
 }
 
 #[test]
 fn apdu_answer_too_short() {
-    let answer = APDUAnswer::from_answer(&[]).expect_err("empty answer");
+    let answer = APDUAnswer::from_answer(&[][..]).expect_err("empty answer");
 
     assert_eq!(answer, APDUAnswerError::TooShort);
 }

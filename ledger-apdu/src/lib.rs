@@ -58,11 +58,9 @@ where
 
 #[derive(Debug)]
 /// An APDU answer, whole last 2 bytes are interpreted as `retcode`
-pub struct APDUAnswer<'a> {
-    /// Answer payload
-    pub data: &'a [u8],
-    /// Answer return code, last 2 bytes (LE)
-    pub retcode: u16,
+pub struct APDUAnswer<B> {
+    data: B,
+    retcode: u16,
 }
 
 #[derive(Debug, Snafu, PartialEq, Eq)]
@@ -73,21 +71,25 @@ pub enum APDUAnswerError {
     TooShort,
 }
 
-impl<'a> APDUAnswer<'a> {
+impl<B> APDUAnswer<B>
+where
+    B: std::ops::Deref<Target = [u8]>,
+{
     /// Attempt to interpret the given slice as an APDU answer
-    pub fn from_answer(answer: &'a [u8]) -> Result<Self, APDUAnswerError> {
+    pub fn from_answer(answer: B) -> Result<Self, APDUAnswerError> {
         ensure!(answer.len() >= 2, TooShortSnafu);
-        let retcode_pos = answer.len() - 2;
-
-        let retcode = arrayref::array_ref!(answer, retcode_pos, 2);
+        let retcode = arrayref::array_ref!(answer, answer.len() - 2, 2);
         let retcode = u16::from_le_bytes(*retcode);
 
-        let apdu_data = &answer[..retcode_pos];
-
         Ok(APDUAnswer {
-            data: apdu_data,
+            data: answer,
             retcode,
         })
+    }
+
+    /// Will return the answer's payload
+    pub fn apdu_data(&self) -> &[u8] {
+        &self.data[..self.data.len() - 2]
     }
 
     /// Will attempt to interpret the error code as an [APDUErrorCode],
