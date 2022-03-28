@@ -10,10 +10,12 @@ readme = "README.md"
 categories  = ["authentication", "cryptography"]
 keywords = ["ledger", "nano", "blue", "apdu"]
 edition = "2018"
-autobenches = false
 
-[badges]
-circle-ci = { repository = "zondax/ledger-rs" }
+[features]
+std = ["snafu/std", "no-std-compat/std"]
+default = ["std"]
 
-[lib]
-name = "ledger_apdu"
+[dependencies]
+arrayref = "0.3.6"
+no-std-compat = "0.4.1"
+snafu = { version = "0.7.0", features = ["rust_1_46"], default-features = false }
