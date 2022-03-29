@@ -92,10 +92,20 @@ where
         &self.data[..self.data.len() - 2]
     }
 
+    /// Will return the answer's payload
+    pub fn data(&self) -> &[u8] {
+        self.apdu_data()
+    }
+
     /// Will attempt to interpret the error code as an [APDUErrorCode],
     /// returning the code as is otherwise
     pub fn error_code(&self) -> Result<APDUErrorCode, u16> {
         self.retcode.try_into().map_err(|_| self.retcode)
+    }
+
+    /// Returns the raw return code
+    pub fn retcode(&self) -> u16 {
+        self.retcode
     }
 }
 

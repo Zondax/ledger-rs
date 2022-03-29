@@ -10,13 +10,6 @@ readme = "README.md"
 categories  = ["authentication", "cryptography"]
 keywords = ["ledger", "nano", "blue", "apdu", "zemu"]
 edition = "2018"
-autobenches = false
-
-[badges]
-circle-ci = { repository = "zondax/ledger-rs" }
-
-[lib]
-name = "ledger_zemu"
 
 [dependencies]
 thiserror = "1.0.20"
@@ -27,7 +20,8 @@ grpc-protobuf = "0.8.1"
 reqwest = { version = "0.10", features = ["json"]}
 hex = "0.4.2"
 serde = { version = "1.0", features = ["derive"] }
-ledger-apdu = { path = "../ledger-apdu", version = "0.8.0" }
+
+ledger-transport = "0.8.0"
 
 [build-dependencies]
 protoc-rust-grpc = "0.8.1"

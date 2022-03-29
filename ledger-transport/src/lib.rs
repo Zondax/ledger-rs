@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2020 Zondax GmbH
+*   (c) 2022 Zondax GmbH
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -15,66 +15,29 @@
 ********************************************************************************/
 //! Generic APDU transport library for Ledger Nano S/X apps
 
-#![deny(warnings, trivial_casts, trivial_numeric_casts)]
+#![deny(trivial_casts, trivial_numeric_casts)]
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
 
-pub use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCodes};
+use std::ops::Deref;
 
-/// APDU Errors
-pub mod errors;
+pub use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCode};
+pub use async_trait::async_trait;
 
-#[cfg(target_arch = "wasm32")]
-/// APDU Transport wrapper for JS/WASM transports
-pub mod apdu_transport_wasm;
+/// Use to talk to the ledger device
+#[async_trait]
+pub trait Exchange {
+    /// Error defined by Transport used
+    type Error;
 
-#[cfg(target_arch = "wasm32")]
-pub use crate::apdu_transport_wasm::{APDUTransport, TransportWrapperTrait};
+    /// The concrete type containing the APDUAnswer
+    type AnswerType: Deref<Target = [u8]> + Send;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod apdu_transport_native;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use crate::apdu_transport_native::APDUTransport;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use exchange::Exchange;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod exchange {
-    //! Some implementation on transport typos for the Exchange trait
-
-    use futures::future;
-    use trait_async::trait_async;
-
-    use crate::errors::TransportError;
-
-    use ledger_apdu::{APDUAnswer, APDUCommand};
-
-    /// Use to talk to the ledger device
-    #[trait_async]
-    pub trait Exchange: Send + Sync {
-        /// Use to talk to the ledger device
-        async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError>;
-    }
-
-    #[trait_async]
-    impl Exchange for ledger::TransportNativeHID {
-        async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
-            let call = self
-                .exchange(command)
-                .map_err(|_| TransportError::APDUExchangeError)?;
-            future::ready(Ok(call)).await
-        }
-    }
-
-    #[cfg(feature = "zemu")]
-    #[trait_async]
-    impl Exchange for ledger_tcp::TransportTCP {
-        async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
-            self.exchange(command)
-                .await
-                .map_err(|_| TransportError::APDUExchangeError)
-        }
-    }
+    /// Send a command with the given transport and retrieve an answer or a transport error
+    async fn exchange<I>(
+        &self,
+        command: &APDUCommand<I>,
+    ) -> Result<APDUAnswer<Self::AnswerType>, Self::Error>
+    where
+        I: Deref<Target = [u8]> + Send + Sync;
 }

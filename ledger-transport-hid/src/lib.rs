@@ -26,12 +26,17 @@ use byteorder::{BigEndian, ReadBytesExt};
 use cfg_if::cfg_if;
 use hidapi::HidDevice;
 use lazy_static::lazy_static;
-use ledger_apdu::{APDUAnswer, APDUCommand};
 use log::info;
-use std::cell::RefCell;
-use std::ffi::CStr;
-use std::io::Cursor;
-use std::sync::{Arc, Mutex, Weak};
+
+use std::{
+    cell::RefCell,
+    ffi::CStr,
+    io::Cursor,
+    ops::Deref,
+    sync::{Arc, Mutex, Weak},
+};
+
+use ledger_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};
 
 cfg_if! {
 if #[cfg(target_os = "linux")] {
@@ -42,8 +47,7 @@ if #[cfg(target_os = "linux")] {
 } else {
     // Mock the type in other target_os
     mod nix {
-        use thiserror::Error;
-        #[derive(Clone, Debug, Error, Eq, PartialEq)]
+        #[derive(Clone, Debug, thiserror::Error, Eq, PartialEq)]
         pub enum Error {}
     }
 }}
@@ -225,23 +229,34 @@ impl TransportNativeHID {
         }
     }
 
-    pub fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, LedgerHIDError> {
+    pub fn exchange<I: Deref<Target = [u8]>>(
+        &self,
+        command: &APDUCommand<I>,
+    ) -> Result<APDUAnswer<Vec<u8>>, LedgerHIDError> {
         let _guard = self.device_mutex.lock().unwrap();
 
         self.write_apdu(LEDGER_CHANNEL, &command.serialize())?;
 
         let mut answer: Vec<u8> = Vec::with_capacity(256);
-        let res = self.read_apdu(LEDGER_CHANNEL, &mut answer)?;
+        self.read_apdu(LEDGER_CHANNEL, &mut answer)?;
 
-        if res < 2 {
-            return Err(LedgerHIDError::Comm("response was too short"));
-        }
-
-        Ok(APDUAnswer::from_answer(answer))
+        APDUAnswer::from_answer(answer).map_err(|_| LedgerHIDError::Comm("response was too short"))
     }
+}
 
-    pub fn close() {
-        extern crate hidapi;
+#[async_trait]
+impl Exchange for TransportNativeHID {
+    type Error = LedgerHIDError;
+    type AnswerType = Vec<u8>;
+
+    async fn exchange<I>(
+        &self,
+        command: &APDUCommand<I>,
+    ) -> Result<APDUAnswer<Self::AnswerType>, Self::Error>
+    where
+        I: Deref<Target = [u8]> + Send + Sync,
+    {
+        self.exchange(command)
     }
 }
 

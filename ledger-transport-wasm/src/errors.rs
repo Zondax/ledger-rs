@@ -13,11 +13,10 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Transport Error
-#[derive(Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum TransportError {
     /// Transport specific error
     #[error("APDU Exchange Error")]

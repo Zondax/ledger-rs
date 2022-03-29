@@ -5,6 +5,7 @@ members = [
     "ledger-transport",
     "ledger-transport-hid",
     "ledger-transport-zemu",
+    "ledger-transport-wasm",
     "ledger-zondax-generic",
 ]
 
