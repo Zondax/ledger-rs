@@ -18,6 +18,8 @@
 #![deny(trivial_numeric_casts)]
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
+//false positive on wasm_bindgen below
+#![allow(clippy::unused_unit)]
 
 mod errors;
 use errors::TransportError;
@@ -79,7 +81,6 @@ impl Exchange for JsTransport {
             let value: &JsValue = self.as_ref();
             value.clone().unchecked_into::<Self>() //clone self...
         };
-        let command = command.clone();
         let data = Uint8Array::from(command.data.deref());
 
         //this seems to work better than just an `async move` for some reason

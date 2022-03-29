@@ -89,11 +89,13 @@ where
     }
 
     /// Will return the answer's payload
+    #[inline(always)]
     pub fn apdu_data(&self) -> &[u8] {
         &self.data[..self.data.len() - 2]
     }
 
     /// Will return the answer's payload
+    #[inline(always)]
     pub fn data(&self) -> &[u8] {
         self.apdu_data()
     }
@@ -105,6 +107,7 @@ where
     }
 
     /// Returns the raw return code
+    #[inline(always)]
     pub fn retcode(&self) -> u16 {
         self.retcode
     }
@@ -142,6 +145,14 @@ pub enum APDUErrorCode {
     Unknown = 0x6F00,
     ///apdu sign verify error
     SignVerifyError = 0x6F01,
+}
+
+#[cfg(feature = "std")]
+impl APDUErrorCode {
+    /// Quickhand to retrieve the error code's description / display
+    pub fn description(&self) -> std::string::String {
+        std::format!("{}", self)
+    }
 }
 
 impl From<APDUErrorCode> for u16 {
