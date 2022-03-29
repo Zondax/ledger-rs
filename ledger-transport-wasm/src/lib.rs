@@ -20,23 +20,31 @@
 #![deny(missing_docs)]
 
 mod errors;
-use std::{ops::Deref, pin::Pin};
-
 use errors::TransportError;
+
+use std::{ops::Deref, pin::Pin};
 
 use futures::{channel::oneshot::Sender, Future};
 use ledger_transport::{APDUAnswer, APDUCommand, Exchange};
 
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{prelude::*, JsCast};
 
 use js_sys::Uint8Array;
 
-#[wasm_bindgen(module = "/transportWrapper.js")]
+#[wasm_bindgen]
 extern "C" {
     pub type JsTransport;
 
-    #[wasm_bindgen(method, catch, js_name = "exchange")]
-    async fn js_exchange(this: &JsTransport, apdu_command: Uint8Array) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(method, catch)]
+    async fn send(
+        this: &JsTransport,
+        cla: u8,
+        ins: u8,
+        p1: u8,
+        p2: u8,
+        data: Uint8Array,
+        status_list: js_sys::Array,
+    ) -> Result<JsValue, JsValue>;
 }
 
 impl Exchange for JsTransport {
@@ -68,22 +76,25 @@ impl Exchange for JsTransport {
     {
         //prepare a local copy of Self
         let this = {
-            use wasm_bindgen::JsCast;
             let value: &JsValue = self.as_ref();
             value.clone().unchecked_into::<Self>() //clone self...
         };
-        let command = command.serialize();
-        let command = Uint8Array::from(command.as_slice());
+        let command = command.clone();
+        let data = Uint8Array::from(command.data.deref());
 
         //this seems to work better than just an `async move` for some reason
         async fn _exchange(
             this: JsTransport,
-            buffer: Uint8Array,
+            (cla, ins, p1, p2): (u8, u8, u8, u8),
+            data: Uint8Array,
             tx: Sender<Result<Vec<u8>, TransportError>>,
         ) {
             use js_sys::Reflect;
 
-            let result = match this.js_exchange(buffer).await {
+            let result = match this
+                .send(cla, ins, p1, p2, data, JsValue::UNDEFINED.unchecked_into())
+                .await
+            {
                 Ok(val) => Ok(Uint8Array::from(val).to_vec()),
                 Err(err) => {
                     let message_prop = JsValue::from_str("message");
@@ -119,7 +130,12 @@ impl Exchange for JsTransport {
 
         //create channel and spawn js future locally (Promise is !Send !Sync)
         let (tx, rx) = futures::channel::oneshot::channel();
-        wasm_bindgen_futures::spawn_local(_exchange(this, command, tx));
+        wasm_bindgen_futures::spawn_local(_exchange(
+            this,
+            (command.cla, command.ins, command.p1, command.p2),
+            data,
+            tx,
+        ));
 
         //retrieve the data from the _exchange wrapper
         let task = async move {

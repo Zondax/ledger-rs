@@ -5,6 +5,9 @@ use serde::{Deserialize, Serialize};
 use ledger_transport_wasm::JsTransport;
 use ledger_transport::{Exchange, APDUAnswer, APDUCommand, APDUErrorCode};
 
+#[macro_use]
+mod log;
+
 /// Ledger Device Info Answer
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct DeviceInfo {
@@ -31,8 +34,21 @@ pub async fn device_info(apdu_transport: JsTransport) -> Promise {
         data: Vec::new(),
     };
 
-    let response = apdu_transport.exchange(&command).await.unwrap();
-    response.error_code().expect("Ledger returned error");
+    let response = match apdu_transport.exchange(&command).await {
+        Ok(ok) => {
+            ok
+        },
+        Err(e) => {
+            console_log!("ledger exchange error: {:?}", e);
+            panic!("Ledger returned error: {:?}", e)
+        }
+    };
+
+    match response.error_code() {
+        Ok(APDUErrorCode::NoError) => {},
+        Ok(err) => panic!("Ledger returned error: {:?}", err),
+        Err(err) => panic!("Unknown ledger error: {:x}", err),
+    }
 
     let target_id_slice = &response.data()[0..4];
     let mut idx = 4;

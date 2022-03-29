@@ -19,6 +19,7 @@
 #![deny(missing_docs)]
 
 extern crate no_std_compat as std;
+use core::ops::Deref;
 use std::convert::{TryFrom, TryInto};
 
 use snafu::prelude::*;
@@ -26,7 +27,7 @@ use snafu::prelude::*;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// An APDU command
 pub struct APDUCommand<B> {
     ///APDU Class
@@ -46,7 +47,7 @@ pub struct APDUCommand<B> {
 #[cfg(feature = "std")]
 impl<B> APDUCommand<B>
 where
-    B: core::ops::Deref<Target = [u8]>,
+    B: Deref<Target = [u8]>,
 {
     /// Serialize this [APDUCommand] to be sent to the device
     pub fn serialize(&self) -> std::vec::Vec<u8> {
@@ -79,7 +80,7 @@ where
     pub fn from_answer(answer: B) -> Result<Self, APDUAnswerError> {
         ensure!(answer.len() >= 2, TooShortSnafu);
         let retcode = arrayref::array_ref!(answer, answer.len() - 2, 2);
-        let retcode = u16::from_le_bytes(*retcode);
+        let retcode = u16::from_be_bytes(*retcode);
 
         Ok(APDUAnswer {
             data: answer,

@@ -16,7 +16,7 @@
 use super::*;
 
 const SERIALIZED_APDU: &[u8] = &[0xFF, 0x00, 0, 0, 3, 0x42, 0x42, 0x42];
-const APDU_RESPONSE: &[u8] = &[0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x90];
+const APDU_RESPONSE: &[u8] = &[0xDE, 0xAD, 0xBE, 0xEF, 0x90, 0x00];
 
 #[test]
 #[cfg(feature = "std")]
@@ -69,7 +69,7 @@ fn apdu_answer_vec() {
 
 #[test]
 fn apdu_answer_error() {
-    let answer = APDUAnswer::from_answer(&[0x00, 0x64][..]).expect("valid answer length >= 2");
+    let answer = APDUAnswer::from_answer(&[0x64, 0x00][..]).expect("valid answer length >= 2");
 
     let code = answer.error_code().expect("valid error code");
     assert_eq!(code, APDUErrorCode::ExecutionError);
@@ -82,7 +82,7 @@ fn apdu_answer_unknown() {
     let answer = APDUAnswer::from_answer(&APDU_RESPONSE[..4]).expect("valid answer length >= 2");
 
     let code = answer.error_code().expect_err("invalid error code");
-    assert_eq!(code, 0xEFBE);
+    assert_eq!(code, 0xBEEF);
 
     assert_eq!(answer.apdu_data(), &[0xDE, 0xAD]);
 }
