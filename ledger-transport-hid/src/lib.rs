@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 mod errors;
-use errors::LedgerHIDError;
+pub use errors::LedgerHIDError;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use cfg_if::cfg_if;

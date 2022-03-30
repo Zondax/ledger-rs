@@ -22,7 +22,7 @@
 #![allow(clippy::unused_unit)]
 
 mod errors;
-use errors::TransportError;
+pub use errors::TransportError;
 
 use std::{ops::Deref, pin::Pin};
 
