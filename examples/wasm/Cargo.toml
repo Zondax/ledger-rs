@@ -15,3 +15,6 @@ serde = { version = "1.0", features = ["derive"] }
 
 ledger-transport = { path = "../../ledger-transport" }
 ledger-transport-wasm = { path = "../../ledger-transport-wasm" }
+
+[patch.crates-io]
+ledger-apdu = { path = "../../ledger-apdu" }

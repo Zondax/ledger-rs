@@ -14,7 +14,8 @@ keywords = ["ledger", "nano", "blue", "apdu"]
 [dependencies]
 futures = "0.3.21"
 js-sys = "0.3.56"
-ledger-transport = "0.8.0"
 thiserror = "1.0.30"
 wasm-bindgen = "0.2.79"
 wasm-bindgen-futures = "0.4.29"
+
+ledger-transport = "0.9.0"
