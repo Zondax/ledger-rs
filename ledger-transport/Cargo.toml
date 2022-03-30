@@ -12,7 +12,6 @@ keywords = ["ledger", "nano", "blue", "apdu"]
 edition = "2018"
 
 [dependencies]
-thiserror = "1.0"
 async-trait = "0.1.53"
 
 ledger-apdu = "0.8.0"

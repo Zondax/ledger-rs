@@ -127,6 +127,8 @@ where
     E::Error: std::error::Error,
 {
     /// Retrieve the device info
+    ///
+    /// Works only in the dashboard
     async fn get_device_info(transport: &E) -> Result<DeviceInfo, LedgerAppError<E::Error>> {
         let command = APDUCommand {
             cla: CLA_DEVICE_INFO,
@@ -182,6 +184,8 @@ where
     }
 
     /// Retrieve the app info
+    ///
+    /// Works only in app (TOOD: dashboard support)
     async fn get_app_info(transport: &E) -> Result<AppInfo, LedgerAppError<E::Error>> {
         let command = APDUCommand {
             cla: CLA_APP_INFO,
