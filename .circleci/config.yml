@@ -83,7 +83,7 @@ jobs:
             curl -o /tmp/tmp.sh https://rustwasm.github.io/wasm-pack/installer/init.sh
             chmod +x /tmp/tmp.sh
             /tmp/tmp.sh -f
-      - run: docker pull zondax/builder-zemu
+      # - run: docker pull zondax/builder-zemu
       - run:
           name: build wasm
           command: |
