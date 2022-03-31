@@ -17,26 +17,13 @@ mod errors;
 pub use errors::LedgerHIDError;
 
 use byteorder::{BigEndian, ReadBytesExt};
-use cfg_if::cfg_if;
-use hidapi::{HidApi, HidDevice};
+use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::info;
 
-use std::{ffi::CStr, io::Cursor, ops::Deref, sync::Mutex};
+use std::{io::Cursor, ops::Deref, sync::Mutex};
 
 pub use hidapi;
 use ledger_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};
-
-cfg_if! {
-if #[cfg(target_os = "linux")] {
-    use nix::{self, ioctl_read};
-    use std::mem;
-} else {
-    // Mock the type in other target_os
-    mod nix {
-        #[derive(Clone, Debug, thiserror::Error, Eq, PartialEq)]
-        pub enum Error {}
-    }
-}}
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
@@ -49,32 +36,38 @@ pub struct TransportNativeHID {
 }
 
 impl TransportNativeHID {
-    #[cfg(not(target_os = "linux"))]
-    fn find_ledger_device_path(api: &HidApi) -> Result<&CStr, LedgerHIDError> {
-        for device in api.device_list() {
-            if device.vendor_id() == LEDGER_VID && device.usage_page() == LEDGER_USAGE_PAGE {
-                return Ok(device.path());
-            }
-        }
-        Err(LedgerHIDError::DeviceNotFound)
+    fn is_ledger(dev: &DeviceInfo) -> bool {
+        dev.vendor_id() == LEDGER_VID && dev.usage_page() == LEDGER_USAGE_PAGE
     }
 
-    #[cfg(target_os = "linux")]
-    fn find_ledger_device_path(api: &HidApi) -> Result<&CStr, LedgerHIDError> {
-        for device in api.device_list() {
-            if device.vendor_id() == LEDGER_VID {
-                let usage_page = get_usage_page(device.path())?;
-                if usage_page == LEDGER_USAGE_PAGE {
-                    return Ok(device.path());
-                }
-            }
-        }
-        Err(LedgerHIDError::DeviceNotFound)
+    /// Get a list of ledger devices available
+    pub fn list_ledgers(api: &HidApi) -> impl Iterator<Item = &DeviceInfo> {
+        api.device_list().filter(|dev| Self::is_ledger(dev))
     }
 
+    /// Create a new HID transport, connecting to the first ledger found
+    /// # Warning
+    /// Opening the same device concurrently will lead to device lock after the first handle is closed
+    /// see [issue](https://github.com/ruabmbua/hidapi-rs/issues/81)
     pub fn new(api: &HidApi) -> Result<Self, LedgerHIDError> {
-        let device_path = TransportNativeHID::find_ledger_device_path(api)?;
-        let device = api.open_path(device_path)?;
+        let first_ledger = Self::list_ledgers(api)
+            .next()
+            .ok_or(LedgerHIDError::DeviceNotFound)?;
+
+        Self::open_device(api, first_ledger)
+    }
+
+    /// Open a specific ledger device
+    ///
+    /// # Note
+    /// No checks are made to ensure the device is a ledger device
+    ///
+    /// # Warning
+    /// Opening the same device concurrently will lead to device lock after the first handle is closed
+    /// see [issue](https://github.com/ruabmbua/hidapi-rs/issues/81)
+    pub fn open_device(api: &HidApi, device: &DeviceInfo) -> Result<Self, LedgerHIDError> {
+        let device = device.open_device(api)?;
+        let _ = device.set_blocking_mode(true);
 
         let ledger = TransportNativeHID {
             device: Mutex::new(device),
@@ -212,87 +205,6 @@ impl Exchange for TransportNativeHID {
     }
 }
 
-cfg_if! {
-if #[cfg(target_os = "linux")] {
-    const HID_MAX_DESCRIPTOR_SIZE: usize = 4096;
-
-    #[repr(C)]
-    pub struct HidrawReportDescriptor {
-        size: u32,
-        value: [u8; HID_MAX_DESCRIPTOR_SIZE],
-    }
-
-    fn get_usage_page(device_path: &CStr) -> Result<u16, LedgerHIDError>
-    {
-        // #define HIDIOCGRDESCSIZE	_IOR('H', 0x01, int)
-        // #define HIDIOCGRDESC		_IOR('H', 0x02, struct HidrawReportDescriptor)
-        ioctl_read!(hid_read_descr_size, b'H', 0x01, libc::c_int);
-        ioctl_read!(hid_read_descr, b'H', 0x02, HidrawReportDescriptor);
-
-        use std::os::unix::{fs::OpenOptionsExt, io::AsRawFd};
-        use std::fs::OpenOptions;
-
-        let file_name = device_path.to_str()?;
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .custom_flags(libc::O_NONBLOCK)
-            .open(file_name)?;
-
-        let mut desc_size = 0;
-
-        unsafe {
-            let fd = file.as_raw_fd();
-
-            hid_read_descr_size(fd, &mut desc_size)?;
-            let mut desc_raw_uninit = mem::MaybeUninit::<HidrawReportDescriptor>::new(HidrawReportDescriptor {
-                size: desc_size as u32,
-                value: [0u8; 4096]
-            });
-            hid_read_descr(fd, desc_raw_uninit.as_mut_ptr())?;
-            let desc_raw = desc_raw_uninit.assume_init();
-
-            let data = &desc_raw.value[..desc_raw.size as usize];
-
-            let mut data_len;
-            let mut key_size;
-            let mut i = 0;
-
-            while i < desc_size as usize {
-                let key = data[i];
-                let key_cmd = key & 0xFC;
-
-                if key & 0xF0 == 0xF0 {
-                    data_len = 0;
-                    key_size = 3;
-                    if i + 1 < desc_size as usize {
-                        data_len = data[i + 1];
-                    }
-                } else {
-                    key_size = 1;
-                    data_len = key & 0x03;
-                    if data_len == 3 {
-                        data_len = 4;
-                    }
-                }
-
-                if key_cmd == 0x04 {
-                    let usage_page = match data_len {
-                        1 => u16::from(data[i + 1]),
-                        2 => (u16::from(data[i + 2] )* 256 + u16::from(data[i + 1])),
-                        _ => 0
-                    };
-
-                    return Ok(usage_page);
-                }
-
-                i += (data_len + key_size) as usize;
-            }
-        }
-        Ok(0)
-    }
-}}
-
 #[cfg(test)]
 mod integration_tests {
     use crate::{APDUCommand, TransportNativeHID};
@@ -337,10 +249,10 @@ mod integration_tests {
         init_logging();
         let api = hidapi();
 
-        // TODO: Extend to discover two devices
-        let ledger_path =
-            TransportNativeHID::find_ledger_device_path(&api).expect("Could not find a device");
-        info!("{:?}", ledger_path);
+        let mut ledgers = TransportNativeHID::list_ledgers(&api);
+
+        let a_ledger = ledgers.next().expect("could not find any ledger device");
+        info!("{:?}", a_ledger.path());
     }
 
     #[test]
@@ -380,5 +292,42 @@ mod integration_tests {
         let result = futures::executor::block_on(Dummy::get_device_info(&ledger))
             .expect("Error during exchange");
         info!("{:x?}", result);
+    }
+
+    #[test]
+    #[serial]
+    #[ignore] //see https://github.com/ruabmbua/hidapi-rs/issues/81
+    fn open_same_device_twice() {
+        use ledger_zondax_generic::{App, AppExt};
+        struct Dummy;
+        impl App for Dummy {
+            const CLA: u8 = 0;
+        }
+
+        init_logging();
+
+        let api = hidapi();
+        let ledger = TransportNativeHID::list_ledgers(&api)
+            .next()
+            .expect("could not get a device");
+
+        let t1 = TransportNativeHID::open_device(api, ledger).expect("Could not open device");
+        let t2 = TransportNativeHID::open_device(api, ledger).expect("Could not open device");
+
+        // use device info command that works in the dashboard
+        let (r1, r2) = futures::executor::block_on(futures::future::join(
+            Dummy::get_device_info(&t1),
+            Dummy::get_device_info(&t2),
+        ));
+
+        let (r1, r2) = (
+            r1.expect("error during exchange (t1)"),
+            r2.expect("error during exchange (t2)"),
+        );
+
+        info!("r1: {r1:x?}");
+        info!("r2: {r2:x?}");
+
+        assert_eq!(r1, r2);
     }
 }

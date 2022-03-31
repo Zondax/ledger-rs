@@ -48,7 +48,7 @@ pub enum ChunkPayloadType {
     Last = 0x02,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 /// App Version
 pub struct Version {
     /// Application Mode
@@ -66,7 +66,7 @@ pub struct Version {
     pub target_id: [u8; 4],
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 /// App Information
 pub struct AppInfo {
     /// Name of the application
@@ -95,7 +95,7 @@ pub struct AppInfo {
     pub flag_pin_validated: bool,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 /// App Device Info
 pub struct DeviceInfo {
     /// Target ID
