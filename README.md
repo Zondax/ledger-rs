@@ -1,7 +1,7 @@
 # ledger-rs
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![CircleCI](https://circleci.com/gh/Zondax/ledger-rs.svg?style=shield)](https://circleci.com/gh/Zondax/ledger-rs)
+[![Github Actions](https://github.com/Zondax/ledger-rs/actions/workflows/main.yaml/badge.svg)](https://github.com/Zondax/ledger-rs)
 
 Communication library between Rust and Ledger Nano S/X devices
 
