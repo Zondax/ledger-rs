@@ -109,7 +109,7 @@ impl TransportNativeHID {
     fn find_ledger_device_path(api: &hidapi::HidApi) -> Result<&CStr, LedgerHIDError> {
         for device in api.device_list() {
             if device.vendor_id() == LEDGER_VID {
-                let usage_page = get_usage_page(&device.path())?;
+                let usage_page = get_usage_page(device.path())?;
                 if usage_page == LEDGER_USAGE_PAGE {
                     return Ok(device.path());
                 }
@@ -124,7 +124,7 @@ impl TransportNativeHID {
         let api = api_mutex.lock().expect("Could not lock");
 
         let device_path = TransportNativeHID::find_ledger_device_path(&api)?;
-        let device = api.open_path(&device_path)?;
+        let device = api.open_path(device_path)?;
 
         let ledger = TransportNativeHID {
             device,
@@ -140,7 +140,7 @@ impl TransportNativeHID {
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
         in_data.push((command_length & 0xFF) as u8);
-        in_data.extend_from_slice(&apdu_command);
+        in_data.extend_from_slice(apdu_command);
 
         let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
         buffer[0] = ((channel >> 8) & 0xFF) as u8; // channel big endian
@@ -289,7 +289,7 @@ if #[cfg(target_os = "linux")] {
 
             let mut data_len;
             let mut key_size;
-            let mut i = 0 as usize;
+            let mut i = 0;
 
             while i < desc_size as usize {
                 let key = data[i];
@@ -313,7 +313,7 @@ if #[cfg(target_os = "linux")] {
                     let usage_page = match data_len {
                         1 => u16::from(data[i + 1]),
                         2 => (u16::from(data[i + 2] )* 256 + u16::from(data[i + 1])),
-                        _ => 0 as u16
+                        _ => 0
                     };
 
                     return Ok(usage_page);

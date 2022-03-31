@@ -67,14 +67,4 @@ pub mod exchange {
             future::ready(Ok(call)).await
         }
     }
-
-    #[cfg(feature = "zemu")]
-    #[trait_async]
-    impl Exchange for ledger_tcp::TransportTCP {
-        async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportError> {
-            self.exchange(command)
-                .await
-                .map_err(|_| TransportError::APDUExchangeError)
-        }
-    }
 }
