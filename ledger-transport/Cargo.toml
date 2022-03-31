@@ -1,7 +1,7 @@
 [package]
 name = "ledger-transport"
 description = "Ledger Hardware Wallet - Generic Transport"
-version = "0.8.0"
+version = "0.9.0"
 license = "Apache-2.0"
 authors = ["Zondax GmbH <info@zondax.ch>"]
 homepage = "https://github.com/zondax/ledger-rs"
@@ -10,36 +10,8 @@ readme = "README.md"
 categories = ["authentication", "cryptography"]
 keywords = ["ledger", "nano", "blue", "apdu"]
 edition = "2018"
-autobenches = false
-
-[badges]
-circle-ci = { repository = "zondax/ledger-rs" }
-
-[lib]
-name = "ledger_transport"
 
 [dependencies]
-byteorder = "1.4"
-lazy_static = "1.4"
-futures = "0.3"
-serde = { version = "1.0", features = ["derive"] }
-thiserror = "1.0"
-trait-async = "0.1.24"
+async-trait = "0.1.53"
 
-ledger-apdu = { path = "../ledger-apdu", version = "0.8.0" }
-
-# For not wasm compilation (native rust) compiling
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-ledger-transport-hid = { path = "../ledger-transport-hid", version = "0.8.0" }
-#ledger-transport-zemu = { path = "../ledger-transport-zemu", version = "0.8.0", optional = true }
-#ledger-transport-tcp = { path = "../ledger-transport-tcp", version = "0.8.0" }
-
-# For wasm compiling
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-
-[dev-dependencies]
-sha2 = "0.9"
-
+ledger-apdu = "0.9.0"
