@@ -1,0 +1,23 @@
+name: Scheduled security audit
+
+on:
+  schedule:
+    # run everyday at midnight
+    - cron: '0 0 * * *'
+
+jobs:
+  security_audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - run: cargo audit
+
+      # disabled until we can change directory
+      # see https://github.com/actions-rs/audit-check/issues/194
+      # - name: Run audit
+      #   uses: actions-rs/audit-check@v1
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
