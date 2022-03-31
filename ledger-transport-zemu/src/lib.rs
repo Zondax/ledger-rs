@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use std::time::Duration;
 
-use zemu::{ExchangeRequest, ExchangeReply};
+use zemu::{ExchangeReply, ExchangeRequest};
 use zemu_grpc::ZemuCommandClient;
 
 use ledger_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};

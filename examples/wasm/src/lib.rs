@@ -1,9 +1,11 @@
-use wasm_bindgen::prelude::*;
+#![allow(clippy::unused_unit)] //for wasm-bindgen
+
 use js_sys::Promise;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
 
+use ledger_transport::{APDUCommand, APDUErrorCode, Exchange};
 use ledger_transport_wasm::JsTransport;
-use ledger_transport::{Exchange, APDUAnswer, APDUCommand, APDUErrorCode};
 
 #[macro_use]
 mod log;
@@ -35,9 +37,7 @@ pub async fn device_info(apdu_transport: JsTransport) -> Promise {
     };
 
     let response = match apdu_transport.exchange(&command).await {
-        Ok(ok) => {
-            ok
-        },
+        Ok(ok) => ok,
         Err(e) => {
             console_log!("ledger exchange error: {:?}", e);
             panic!("Ledger returned error: {:?}", e)
@@ -45,7 +45,7 @@ pub async fn device_info(apdu_transport: JsTransport) -> Promise {
     };
 
     match response.error_code() {
-        Ok(APDUErrorCode::NoError) => {},
+        Ok(APDUErrorCode::NoError) => {}
         Ok(err) => panic!("Ledger returned error: {:?}", err),
         Err(err) => panic!("Unknown ledger error: {:x}", err),
     }
@@ -73,16 +73,20 @@ pub async fn device_info(apdu_transport: JsTransport) -> Promise {
     let mut target_id = [Default::default(); 4];
     target_id.copy_from_slice(target_id_slice);
 
-    let se_version = std::str::from_utf8(se_version_bytes).map_err(|_e| {
-        Promise::reject(&js_sys::Error::new(
-            "Error reading SE version (cannot convert bytes to utf8).",
-        ))
-    }).unwrap();
-    let mcu_version = std::str::from_utf8(tmp).map_err(|_e| {
-        Promise::reject(&js_sys::Error::new(
-            "Error reading MCU version (cannot convert bytes to utf8).",
-        ))
-    }).unwrap();
+    let se_version = std::str::from_utf8(se_version_bytes)
+        .map_err(|_e| {
+            Promise::reject(&js_sys::Error::new(
+                "Error reading SE version (cannot convert bytes to utf8).",
+            ))
+        })
+        .unwrap();
+    let mcu_version = std::str::from_utf8(tmp)
+        .map_err(|_e| {
+            Promise::reject(&js_sys::Error::new(
+                "Error reading MCU version (cannot convert bytes to utf8).",
+            ))
+        })
+        .unwrap();
 
     let device_info = DeviceInfo {
         target_id,
@@ -92,12 +96,12 @@ pub async fn device_info(apdu_transport: JsTransport) -> Promise {
     };
 
     let answer = JsValue::from_serde(&device_info)
-    .map_err(|_e| {
-        Promise::reject(&js_sys::Error::new(
-            "Error converting answer message to javascript value.",
-        ))
-    })
-    .unwrap();
+        .map_err(|_e| {
+            Promise::reject(&js_sys::Error::new(
+                "Error converting answer message to javascript value.",
+            ))
+        })
+        .unwrap();
 
     Promise::resolve(&answer)
 }
