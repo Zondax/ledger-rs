@@ -325,8 +325,8 @@ mod integration_tests {
             r2.expect("error during exchange (t2)"),
         );
 
-        info!("r1: {r1:x?}");
-        info!("r2: {r2:x?}");
+        info!("r1: {:x?}", r1);
+        info!("r2: {:x?}", r2);
 
         assert_eq!(r1, r2);
     }
