@@ -11,14 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Run audit
+        uses: actions-rs/audit-check@v1
         with:
-          submodules: true
-
-      - run: cargo audit
-
-      # disabled until we can change directory
-      # see https://github.com/actions-rs/audit-check/issues/194
-      # - name: Run audit
-      #   uses: actions-rs/audit-check@v1
-      #   with:
-      #     token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
