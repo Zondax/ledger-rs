@@ -25,6 +25,7 @@ fn generate_mod_rs() {
 }
 
 fn main() {
+    println!("cargo:rerun-if-changed=zemu.proto");
     let out = out_dir();
     Codegen::new()
         .out_dir(out)

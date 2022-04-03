@@ -1,5 +1,4 @@
-# ledger-zondax-generic
-
+# Rust WASM transport library for Ledger
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Common APDU commands typically used in Ledger Apps developed by Zondax
+This package provides a wrapper to a transport defined in JS

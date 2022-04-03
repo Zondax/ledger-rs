@@ -1,5 +1,5 @@
 const ledger = require('./ledger-node');
-const Zemu = require('@zondax/zemu').default;
+const Zemu = require('@zondax/zemu');
 const path = require('path');
 const assert = require('assert');
 
@@ -20,15 +20,17 @@ describe("LEDGER TEST", function () {
   before(async function() {
     // runs before tests start
     await catchExit();
-    await Zemu.checkAndPullImage();
-    await Zemu.stopAllEmuContainers();
+    await Zemu.default.checkAndPullImage();
+    await Zemu.default.stopAllEmuContainers();
 
-    sim = new Zemu(path.join(__dirname,'/node_modules/@zondax/zemu/bin/demoApp/app.elf'));
+    sim = new Zemu.default(path.join(__dirname,'/node_modules/@zondax/zemu/bin/demoAppS.elf'));
     const APP_SEED = "equip will roof matter pink blind book anxiety banner elbow sun young";
     const sim_options = {
+        ...Zemu.DEFAULT_START_OPTIONS,
         logging: true,
         custom: `-s "${APP_SEED}"`,
-        press_delay: 150
+        press_delay: 150,
+        model: 'nanos',
         //,X11: true
     };
 
