@@ -1,5 +1,6 @@
 [package]
 name = "ledger-transport-wasm"
+description = "Ledger Hardware Wallet - WASM Transport"
 version = "0.9.0"
 license = "Apache-2.0"
 authors = ["Zondax GmbH <hello@zondax.ch>"]
