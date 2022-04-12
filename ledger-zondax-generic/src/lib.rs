@@ -24,7 +24,6 @@
 mod errors;
 pub use errors::*;
 
-use crate::LedgerAppError;
 use serde::{Deserialize, Serialize};
 use std::str;
 
