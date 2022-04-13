@@ -1,7 +1,7 @@
 [package]
 name = "ledger-node-example"
 version = "0.1.0"
-authors = ["Zondax GmbH <info@zondax.ch>"]
+authors = ["Zondax GmbH <hello@zondax.ch>"]
 edition = "2018"
 
 [lib]

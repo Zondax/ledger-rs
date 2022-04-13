@@ -1,9 +1,9 @@
 [package]
 name = "ledger-zondax-generic"
 description = "Ledger Hardware Wallet - Common APDU Protocol Types"
-version = "0.9.0"
+version = "0.9.1"
 license = "Apache-2.0"
-authors = ["Zondax GmbH <info@zondax.ch>"]
+authors = ["Zondax GmbH <hello@zondax.ch>"]
 homepage = "https://github.com/zondax/ledger-rs"
 repository = "https://github.com/zondax/ledger-rs"
 readme = "README.md"
