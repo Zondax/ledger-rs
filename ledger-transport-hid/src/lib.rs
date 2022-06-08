@@ -16,6 +16,7 @@
 mod errors;
 pub use errors::LedgerHIDError;
 
+pub use crate::errors::LedgerHIDError;
 use byteorder::{BigEndian, ReadBytesExt};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use log::info;

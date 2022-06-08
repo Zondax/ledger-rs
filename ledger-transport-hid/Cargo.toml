@@ -18,6 +18,7 @@ cfg-if = "1.0.0"
 thiserror = "1.0"
 hex = "0.4"
 log = "0.4"
+ledger-apdu = { path = "../ledger-apdu", version = "0.7.0" }
 
 ledger-transport = "0.10"
 
