@@ -125,10 +125,10 @@ impl TransportNativeHID {
 
     fn read_apdu(
         device: &HidDevice,
-        _channel: u16,
+        channel: u16,
         apdu_answer: &mut Vec<u8>,
     ) -> Result<usize, LedgerHIDError> {
-        let mut buffer = vec![0u8; LEDGER_PACKET_SIZE as usize];
+        let mut buffer = vec![0u8; LEDGER_PACKET_READ_SIZE as usize];
         let mut sequence_idx = 0u16;
         let mut expected_apdu_len = 0usize;
 
