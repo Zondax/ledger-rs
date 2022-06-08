@@ -4,7 +4,7 @@
     "test": "mocha test.js"
   },
   "dependencies": {
-    "@zondax/zemu": "^0.27",
-    "mocha": "^8.0.1"
+    "@zondax/zemu": "^0.30.0",
+    "mocha": "^10.0.0"
   }
 }

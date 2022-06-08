@@ -1,31 +1,31 @@
 [package]
 name = "ledger-transport-hid"
 description = "Ledger Hardware Wallet - HID Transport"
-version = "0.9.0"
+version = "0.10.0"
 license = "Apache-2.0"
-authors = ["Zondax GmbH <hello@zondax.ch>"]
+authors = ["Zondax AG <hello@zondax.ch>"]
 homepage = "https://github.com/zondax/ledger-rs"
 repository = "https://github.com/zondax/ledger-rs"
 readme = "README.md"
 categories  = ["authentication", "cryptography"]
 keywords = ["ledger", "nano", "blue", "apdu"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
-libc = "0.2.72"
-byteorder = "1.3.4"
-cfg-if = "0.1.10"
-thiserror = "1.0.20"
-hex = "0.4.2"
-log = "0.4.8"
+libc = "0.2"
+byteorder = "1.4"
+cfg-if = "1.0.0"
+thiserror = "1.0"
+hex = "0.4"
+log = "0.4"
 
-ledger-transport = "0.9.0"
+ledger-transport = "0.10"
 
-hidapi = { version = "1.3.4", features = ["linux-static-hidraw"], default-features = false }
+hidapi = { version = "1.4.1", features = ["linux-static-hidraw"], default-features = false }
 
 [dev-dependencies]
 once_cell = "1"
-ledger-zondax-generic = "0.9.0"
-serial_test = "0.4.0"
-env_logger = "0.7.1"
+ledger-zondax-generic = "0.10"
+serial_test = "0.7.0"
+env_logger = "0.9"
 futures = "0.3"
