@@ -2,7 +2,7 @@
 name = "ledger-node-example"
 version = "0.1.0"
 authors = ["Zondax AG <hello@zondax.ch>"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
