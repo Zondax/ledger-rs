@@ -1,6 +1,0 @@
-{
-  "name": "ledger-node-example",
-  "dependencies": {
-    "@ledgerhq/hw-transport-node-hid": "^6.27.1"
-  }
-}
