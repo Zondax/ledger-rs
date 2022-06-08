@@ -1,17 +1,26 @@
 [workspace]
+resolver = "2"
 members = [
     "ledger-apdu",
     "ledger-transport",
     "ledger-transport-hid",
     "ledger-transport-zemu",
-    "ledger-zondax-generic"
+    "ledger-transport-wasm",
+    "ledger-zondax-generic",
+    "examples/wasm"
 ]
 
-exclude = [
-  "examples/wasm"
-]
+exclude = []
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
 overflow-checks = true
+
+[patch.crates-io]
+ledger-apdu = { path = "ledger-apdu" }
+ledger-transport = { path = "ledger-transport" }
+ledger-transport-hid = { path = "ledger-transport-hid" }
+ledger-transport-zemu = { path = "ledger-transport-zemu" }
+ledger-transport-wasm = { path = "ledger-transport-wasm" }
+ledger-zondax-generic = { path = "ledger-zondax-generic" }

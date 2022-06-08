@@ -1,8 +1,8 @@
 [package]
 name = "ledger-node-example"
 version = "0.1.0"
-authors = ["Zondax GmbH <info@zondax.ch>"]
-edition = "2018"
+authors = ["Zondax AG <hello@zondax.ch>"]
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib"]
@@ -14,4 +14,4 @@ js-sys = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 
 ledger-transport = { path = "../../ledger-transport" }
-ledger-apdu = { path = "../../ledger-apdu" }
+ledger-transport-wasm = { path = "../../ledger-transport-wasm" }

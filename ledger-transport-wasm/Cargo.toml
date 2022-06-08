@@ -1,17 +1,22 @@
 [package]
-name = "ledger-transport"
-description = "Ledger Hardware Wallet - Generic Transport"
+name = "ledger-transport-wasm"
+description = "Ledger Hardware Wallet - WASM Transport"
 version = "0.10.0"
 license = "Apache-2.0"
 authors = ["Zondax AG <hello@zondax.ch>"]
+edition = "2021"
 homepage = "https://github.com/zondax/ledger-rs"
 repository = "https://github.com/zondax/ledger-rs"
 readme = "README.md"
 categories = ["authentication", "cryptography"]
 keywords = ["ledger", "nano", "blue", "apdu"]
-edition = "2021"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-async-trait = "0.1"
+futures = "0.3"
+js-sys = "0.3"
+thiserror = "1.0"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 
-ledger-apdu = "0.10.0"
+ledger-transport = "0.10"

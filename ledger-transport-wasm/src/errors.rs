@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2020 Zondax GmbH
+*   (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,11 +13,10 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// Transport Error
-#[derive(Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum TransportError {
     /// Transport specific error
     #[error("APDU Exchange Error")]

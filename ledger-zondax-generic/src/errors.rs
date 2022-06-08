@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2020 Zondax GmbH
+*   (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -13,13 +13,12 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use ledger_transport::errors::TransportError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// App Error
 #[derive(Clone, Debug, Eq, Error, PartialEq, Deserialize, Serialize)]
-pub enum LedgerAppError {
+pub enum LedgerAppError<E: std::error::Error> {
     /// Invalid version error
     #[error("This version is not supported")]
     InvalidVersion,
@@ -46,7 +45,7 @@ pub enum LedgerAppError {
     InvalidDerivationPath,
     /// The derivation is invalid
     #[error("Transport | {0}")]
-    TransportError(#[from] TransportError),
+    TransportError(#[from] E),
     /// Crypto related errors
     #[error("Crypto")]
     Crypto,
@@ -62,4 +61,7 @@ pub enum LedgerAppError {
     /// Application specific error
     #[error("App Error: | {0} {1}")]
     AppSpecific(u16, String),
+    ///Unknown error has occurred
+    #[error("Uknown error: {0}")]
+    Unknown(u16),
 }

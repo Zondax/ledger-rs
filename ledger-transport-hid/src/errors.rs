@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2018 Zondax GmbH
+*   (c) 2022 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -23,9 +23,6 @@ pub enum LedgerHIDError {
     /// Communication error
     #[error("Ledger device: communication error `{0}`")]
     Comm(&'static str),
-    /// Ioctl error
-    #[error("Ledger device: Ioctl error")]
-    Ioctl(#[from] crate::nix::Error),
     /// i/o error
     #[error("Ledger device: i/o error")]
     Io(#[from] std::io::Error),
