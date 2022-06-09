@@ -20,9 +20,12 @@ extern crate hidapi;
 extern crate serial_test;
 
 mod errors;
+
+use crate::TransportTcpError::ReadCannotDeserialize;
 use byteorder::{BigEndian as BE, WriteBytesExt};
 pub use errors::TransportTcpError;
 use ledger_apdu::{APDUAnswer, APDUCommand};
+use std::ops::Deref;
 use std::result::Result;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -36,11 +39,13 @@ impl TransportTcp {
             .await
             .map_err(|_| TransportTcpError::connection_refused())?;
 
-
         Ok(TransportTcp {})
     }
-    pub async fn exchange(&self, command: &APDUCommand) -> Result<APDUAnswer, TransportTcpError> {
-        let mut stream =         TcpStream::connect("127.0.0.1:9999")
+    pub async fn exchange<I: Deref<Target = [u8]>>(
+        &self,
+        command: &APDUCommand<I>,
+    ) -> Result<APDUAnswer<Vec<u8>>, TransportTcpError> {
+        let mut stream = TcpStream::connect("127.0.0.1:9999")
             .await
             .map_err(|_| TransportTcpError::connection_refused())?;
         let payload = command.serialize();
@@ -58,14 +63,13 @@ impl TransportTcp {
         // Try to read data, this may still fail with `WouldBlock`
         // if the readiness event is a false positive.
         match stream.try_read(&mut buf) {
-
             Ok(0) => Err(TransportTcpError::connection_closed()),
             Ok(n) => {
-                let _packet_len = u32::from_be_bytes([buf[0],buf[1],buf[2],buf[3]]) as usize;
+                let _packet_len = u32::from_be_bytes([buf[0], buf[1], buf[2], buf[3]]) as usize;
                 let apdu_frame = buf[4..n].to_vec();
 
-                Ok(APDUAnswer::from_answer(apdu_frame))
-            },
+                APDUAnswer::from_answer(apdu_frame).map_err(|_| ReadCannotDeserialize)
+            }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 Err(TransportTcpError::read_would_block())
             }

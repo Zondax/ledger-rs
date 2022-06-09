@@ -26,6 +26,8 @@ pub enum TransportTcpError {
     ConnectionClosed,
     #[error("TCP Read Would Block")]
     ReadWouldBlock,
+    #[error("TCP cannot deserialize")]
+    ReadCannotDeserialize,
 }
 
 impl TransportTcpError {
@@ -38,5 +40,4 @@ impl TransportTcpError {
     pub(crate) fn read_would_block() -> TransportTcpError {
         TransportTcpError::ReadWouldBlock
     }
-
 }
