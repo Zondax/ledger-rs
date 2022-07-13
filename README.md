@@ -15,5 +15,18 @@ An example can be found in [`ledger-zondax-hid` tests](./ledger-zondax-hid/src/l
 ## Using an App interface
 
 To use an app interface, so when communicating with a ledger device (or emulator) the transports available are:
-    * `ledger-zondax-hid`
-    * `ledger-zondax-zemu`
+    * `ledger-transport-hid`
+    * `ledger-transport-zemu`
+
+# How to publish to crates.io
+
+Obviously only members of the Zondax/crates team are allowed to publish.
+
+Afterwards, there's a correct order to publish the crates, based on the crate dependencies:
+
+* ledger-apdu
+* ledger-transport
+* ledger-zondax-generic
+
+Then, the rest of the crates can be published in any order.
+
