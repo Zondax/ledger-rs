@@ -12,16 +12,13 @@ keywords = ["ledger", "nano", "blue", "apdu", "tcp"]
 edition = "2021"
 
 [features]
-default = [ "clap" ]
+default = []
 
 [dependencies]
 thiserror = "1.0"
 log = "0.4"
 async-trait = "0.1.56"
-
 byteorder = "1.4.3"
-
-humantime = "2.1.0"
 
 ledger-transport = "0.10"
 tokio = { version = "1.20.1", features = [ "net", "time" ] }

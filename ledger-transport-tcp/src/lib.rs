@@ -1,5 +1,5 @@
 use std::{
-    net::{IpAddr, SocketAddr},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     ops::Deref,
     time::Duration,
 };
@@ -16,26 +16,38 @@ use tokio::{
 mod error;
 pub use error::Error;
 
-/// Ledger speculos (TCP) transport
+/// Ledger TCP (speculos) ADPU transport
 pub struct TransportTcp {
     s: Mutex<TcpStream>,
     timeout: Duration,
 }
 
+/// Configuration options for [`TransportTcp`]
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TcpOptions {
-    /// IP Address for TCP connection
-    #[cfg_attr(feature = "clap", clap(long, default_value = "127.0.0.1", env))]
+    /// TCP address for ADPU connection
+    #[cfg_attr(feature = "clap", clap(long, default_value_t = TcpOptions::default().addr, env = "TCP_ADDR"))]
     pub addr: IpAddr,
 
-    /// Port for TCP connection
-    #[cfg_attr(feature = "clap", clap(long, default_value = "1237", env))]
+    /// TCP port for ADPU connection
+    #[cfg_attr(feature = "clap", clap(long, default_value_t = TcpOptions::default().port, env = "TCP_PORT"))]
     pub port: u16,
 
-    /// Request/Response timeout
-    #[cfg_attr(feature = "clap", clap(long, default_value = "3s", env))]
-    pub timeout: humantime::Duration,
+    /// ADPU timeout in milliseconds
+    #[cfg_attr(feature = "clap", clap(default_value_t = TcpOptions::default().timeout_ms, env = "TCP_TIMEOUT_MS"))]
+    pub timeout_ms: u64,
+}
+
+/// Default configuration for [`TransportTcp`]
+impl Default for TcpOptions {
+    fn default() -> Self {
+        Self {
+            addr: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+            port: 1237,
+            timeout_ms: 3000,
+        }
+    }
 }
 
 impl TransportTcp {
@@ -45,19 +57,21 @@ impl TransportTcp {
 
         log::debug!("Using socket: {}", addr);
 
+        // Bind TCP connection
         let s = match TcpStream::connect(addr).await {
             Ok(s) => s,
             Err(e) => {
                 log::warn!("Failed to connect to TCP socket: {}", addr);
-                return Err(Error::Connection(e));
+                return Err(Error::Io(e));
             }
         };
 
         log::debug!("Socket bound ({:?})", s.local_addr());
 
+        // Build object
         Ok(Self {
             s: Mutex::new(s),
-            timeout: *o.timeout,
+            timeout: Duration::from_millis(o.timeout_ms),
         })
     }
 }
@@ -67,6 +81,7 @@ impl Exchange for TransportTcp {
     type Error = Error;
     type AnswerType = Vec<u8>;
 
+    /// Exchange an ADPU with via the TCP transport
     async fn exchange<I>(
         &self,
         command: &APDUCommand<I>,
