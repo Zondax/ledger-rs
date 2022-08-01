@@ -19,25 +19,23 @@
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
 
-use std::ops::Deref;
+use core::fmt::Debug;
 
 pub use async_trait::async_trait;
-pub use ledger_apdu::{APDUAnswer, APDUCommand, APDUErrorCode};
+pub use ledger_apdu::{ApduCmd, ApduBase, APDUErrorCode};
 
 /// Use to talk to the ledger device
 #[async_trait]
 pub trait Exchange {
     /// Error defined by Transport used
-    type Error;
+    type Error: Debug;
 
-    /// The concrete type containing the APDUAnswer
-    type AnswerType: Deref<Target = [u8]> + Send;
-
-    /// Send a command with the given transport and retrieve an answer or a transport error
-    async fn exchange<I>(
+    /// Send a command with the given transport and retrieve an answer or a transport error.
+    /// 
+    /// The provided buffer is used for TX and RX operations to mitigate the need for allocation
+    async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
         &self,
-        command: &APDUCommand<I>,
-    ) -> Result<APDUAnswer<Self::AnswerType>, Self::Error>
-    where
-        I: Deref<Target = [u8]> + Send + Sync;
+        command: CMD,
+        buff: &'a mut [u8],
+    ) -> Result<ANS, Self::Error>;
 }

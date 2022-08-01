@@ -1,11 +1,10 @@
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    ops::Deref,
     time::Duration,
 };
 
 use byteorder::{ByteOrder, NetworkEndian};
-use ledger_transport::{APDUAnswer, APDUCommand, Exchange};
+use ledger_transport::{Exchange, ApduCmd, ApduBase};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -79,55 +78,50 @@ impl TransportTcp {
 #[async_trait::async_trait]
 impl Exchange for TransportTcp {
     type Error = Error;
-    type AnswerType = Vec<u8>;
 
     /// Exchange an ADPU with via the TCP transport
-    async fn exchange<I>(
+    async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
         &self,
-        command: &APDUCommand<I>,
-    ) -> Result<APDUAnswer<Self::AnswerType>, Self::Error>
-    where
-        I: Deref<Target = [u8]> + Send + Sync,
-    {
+        command: CMD,
+        buff: &'a mut [u8],
+    ) -> Result<ANS, Self::Error> {
         let mut s = self.s.lock().await;
 
         // Encode command object
-        let out = command.serialize();
+        let tx_len = command.encode(&mut buff[4..]);
+        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32);
 
-        let mut buff = vec![0u8; out.len() + 4];
-        NetworkEndian::write_u32(&mut buff, out.len() as u32);
-        buff[4..].copy_from_slice(&out);
+        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + 4], tx_len);
 
-        log::debug!("Sending command: {:02x?} ({})", out, out.len());
 
         // Send command
-        s.write(&buff).await?;
+        s.write(&buff[..tx_len + 4]).await?;
+
 
         // Await response
-        let mut buff = [0u8; 4];
-
         log::debug!("Awaiting response...");
 
         // Read length header
-        let len = match tokio::time::timeout(self.timeout, s.read(&mut buff)).await?? {
-            4 => NetworkEndian::read_u32(&buff[..4]),
+        let rx_len = match tokio::time::timeout(self.timeout, s.read(&mut buff[..4])).await?? {
+            4 => NetworkEndian::read_u32(&buff[..4]) as usize,
             _ => return Err(Error::InvalidLength),
         };
 
-        log::debug!("Expected {} byte response", len);
+        log::debug!("Expected {} byte response", rx_len);
+
 
         // Read response body
-        let mut buff = vec![0u8; len as usize + 2];
-        tokio::time::timeout(self.timeout, s.read_exact(&mut buff)).await??;
+        tokio::time::timeout(self.timeout, s.read_exact(&mut buff[..rx_len])).await??;
 
-        log::debug!("Received answer: {:02x?} ({})", buff, len);
+        log::debug!("Received answer: {:02x?} ({})", buff, rx_len);
 
         // Decode answer ADPU
-        let answer = APDUAnswer::from_answer(buff).map_err(|_| Error::InvalidAnswer)?;
+        let answer = ANS::decode(&buff[..rx_len])
+            .map_err(|_| Error::InvalidAnswer)?;
 
         log::debug!("Decoded APDU: {:02x?}", answer);
 
         // Return ADPU
-        Ok(answer)
+        Ok(answer) 
     }
 }

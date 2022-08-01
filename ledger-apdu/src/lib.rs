@@ -19,13 +19,20 @@
 #![deny(missing_docs)]
 
 extern crate no_std_compat as std;
-use core::ops::Deref;
-use std::convert::{TryFrom, TryInto};
+
+
+use core::{ops::Deref, fmt::Debug};
+use core::convert::{TryFrom, TryInto};
 
 use snafu::prelude::*;
 
 #[cfg(test)]
 mod tests;
+
+mod apdus;
+
+mod error;
+pub use error::{ApduError, APDUErrorCode};
 
 #[derive(Debug, Clone)]
 /// An APDU command
@@ -113,76 +120,61 @@ where
     }
 }
 
-#[derive(Copy, Clone, Debug, Snafu, PartialEq, Eq)]
-#[repr(u16)]
-/// Common known APDU error codes
-pub enum APDUErrorCode {
-    ///success
-    NoError = 0x9000,
-    ///error during apdu execution
-    ExecutionError = 0x6400,
-    ///apdu command wrong length
-    WrongLength = 0x6700,
-    ///empty apdu buffer
-    EmptyBuffer = 0x6982,
-    ///apdu buffer too small
-    OutputBufferTooSmall = 0x6983,
-    ///apdu parameters invalid
-    DataInvalid = 0x6984,
-    ///apdu preconditions not satisfied
-    ConditionsNotSatisfied = 0x6985,
-    ///apdu command not allowed
-    CommandNotAllowed = 0x6986,
-    ///apdu data field incorrect (bad key)
-    BadKeyHandle = 0x6A80,
-    ///apdu p1 or p2 incorrect
-    InvalidP1P2 = 0x6B00,
-    ///apdu instruction not supported or invalid
-    InsNotSupported = 0x6D00,
-    ///apdu class not supported or invalid
-    ClaNotSupported = 0x6E00,
-    ///unknown apdu error
-    Unknown = 0x6F00,
-    ///apdu sign verify error
-    SignVerifyError = 0x6F01,
+/// [`ApduBase`] provides encode/decode methods for APDUs
+pub trait ApduBase<'a>: Send + PartialEq + Debug + Sized {
+    /// Encode an APDU to the provided buffer, returning the length of the encoded data.
+    fn encode(&self, buff: &mut [u8]) -> usize;
+
+    /// Decode an APDU from the provided buffer, returning the decoded object
+    fn decode(buff: &'a [u8]) -> Result<Self, ApduError>;
 }
 
-#[cfg(feature = "std")]
-impl APDUErrorCode {
-    /// Quickhand to retrieve the error code's description / display
-    pub fn description(&self) -> std::string::String {
-        std::format!("{}", self)
+/// [`ApduCmd`] implemented for APDU commands / requests
+pub trait ApduCmd<'a>: ApduBase<'a> {
+    /// Class ID for APDU commands
+    const CLA: u8;
+
+    /// Instruction ID for APDU commands
+    const INS: u8;
+
+    /// Fetch P1 value
+    fn p1(&self) -> u8 {
+        0
+    }
+
+    /// Fetch P2 value
+    fn p2(&self) -> u8 {
+        0
     }
 }
 
-impl From<APDUErrorCode> for u16 {
-    fn from(code: APDUErrorCode) -> Self {
-        code as u16
+/// Marker trait for empty APDUs (automatically implements [`ApduBase`])
+pub trait ApduEmpty: Send + PartialEq + Debug + Default {}
+
+/// Default [`ApduBase`] impl for [`ApduEmpty`] APDUs
+impl <'a, T: ApduEmpty> ApduBase<'a> for T {
+    /// Encode APDU into the provided buffer
+    fn encode(&self, _buff: &mut [u8]) -> usize {
+        0
+    }
+
+    /// Decode APDU from the provided buffer
+    fn decode(_buff: &'a [u8]) -> Result<Self, ApduError> {
+        Ok(Default::default())
     }
 }
 
-impl TryFrom<u16> for APDUErrorCode {
-    type Error = ();
 
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        let this = match value {
-            0x9000 => Self::NoError,
-            0x6400 => Self::ExecutionError,
-            0x6700 => Self::WrongLength,
-            0x6982 => Self::EmptyBuffer,
-            0x6983 => Self::OutputBufferTooSmall,
-            0x6984 => Self::DataInvalid,
-            0x6985 => Self::ConditionsNotSatisfied,
-            0x6986 => Self::CommandNotAllowed,
-            0x6A80 => Self::BadKeyHandle,
-            0x6B00 => Self::InvalidP1P2,
-            0x6D00 => Self::InsNotSupported,
-            0x6E00 => Self::ClaNotSupported,
-            0x6F00 => Self::Unknown,
-            0x6F01 => Self::SignVerifyError,
-            _ => return Err(()),
-        };
+#[cfg(test)]
+pub(crate) mod test {
+    use super::*;
 
-        Ok(this)
+    /// Helper for APDU encode / decode tests
+    pub fn encode_decode_apdu<'a, A: ApduBase<'a>>(buff: &'a mut [u8], apdu: &A) {
+        let n = apdu.encode(buff);
+
+        let decoded = A::decode(&buff[..n]).unwrap();
+
+        assert_eq!(apdu, &decoded);
     }
 }

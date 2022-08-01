@@ -21,7 +21,7 @@ async-trait = "0.1.56"
 byteorder = "1.4.3"
 
 ledger-transport = "0.10"
-tokio = { version = "1.20.1", features = [ "net", "time" ] }
+tokio = { version = "1.20.1", features = [ "net", "time", "sync", "io-util" ] }
 
 clap = { version = "3.2.15", features = [ "derive", "env" ], optional = true }
 
