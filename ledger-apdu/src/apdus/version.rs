@@ -22,6 +22,8 @@ impl <const CLA: u8> ApduEmpty for VersionGet<CLA> {}
 
 /// Application information APDU response
 #[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all="camelCase"))]
 pub struct Version {
     /// Application Mode
     #[cfg_attr(features = "serde", serde(rename(serialize = "testMode")))]
@@ -47,6 +49,8 @@ impl Version {
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, IntoPrimitive, TryFromPrimitive)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all="camelCase"))]
 #[repr(u8)]
 pub enum VersionMode {
     SingleByte = 0x04,

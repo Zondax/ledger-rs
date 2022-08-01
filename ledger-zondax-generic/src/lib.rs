@@ -28,13 +28,8 @@ use serde::{Deserialize, Serialize};
 use std::str;
 
 use async_trait::async_trait;
-use ledger_transport::{APDUAnswer, APDUCommand, APDUErrorCode, Exchange};
+use ledger_transport::{APDUErrorCode, Exchange};
 
-const INS_GET_VERSION: u8 = 0x00;
-const CLA_APP_INFO: u8 = 0xb0;
-const INS_APP_INFO: u8 = 0x01;
-const CLA_DEVICE_INFO: u8 = 0xe0;
-const INS_DEVICE_INFO: u8 = 0x01;
 const USER_MESSAGE_CHUNK_SIZE: usize = 250;
 
 /// Chunk payload type

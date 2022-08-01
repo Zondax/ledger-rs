@@ -22,7 +22,7 @@ extern crate no_std_compat as std;
 
 
 use core::{ops::Deref, fmt::Debug};
-use core::convert::{TryFrom, TryInto};
+use core::convert::{TryInto};
 
 use snafu::prelude::*;
 

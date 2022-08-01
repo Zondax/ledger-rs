@@ -19,6 +19,8 @@ impl ApduEmpty for AppInfoGet {}
 
 /// Application information APDU response
 #[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all="camelCase"))]
 pub struct AppInfo<'a> {
     /// Application name
     pub name: &'a str,
@@ -30,6 +32,7 @@ pub struct AppInfo<'a> {
 
 bitflags::bitflags! {
     /// Application info flags
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct AppFlags: u8 {
         const RECOVERY = 0x01;
         const SIGNED = 0x02;

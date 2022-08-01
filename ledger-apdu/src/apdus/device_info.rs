@@ -19,6 +19,8 @@ impl ApduEmpty for DeviceInfoGet {}
 
 /// Device information APDU response
 #[derive(Copy, Clone, PartialEq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all="camelCase"))]
 pub struct DeviceInfo<'a> {
     /// Target ID
     #[cfg_attr(features = "serde", serde(rename(serialize = "targetId")))]
