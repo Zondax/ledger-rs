@@ -38,14 +38,6 @@ pub struct DeviceInfo<'a> {
     pub mcu_version: &'a str,
 }
 
-bitflags::bitflags! {
-    /// Device info flags
-    pub struct DeviceFlags: u8 {
-        const TODO = 0x01;
-    }
-}
-
-const APP_VERSION_FMT: u8 = 1;
 
 impl <'a> DeviceInfo<'a> {
     /// Create a new device info APDU

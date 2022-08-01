@@ -34,9 +34,13 @@ bitflags::bitflags! {
     /// Application info flags
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct AppFlags: u8 {
+        /// Recovery mode
         const RECOVERY = 0x01;
+        /// Signed application
         const SIGNED = 0x02;
+        /// User onboarded
         const ONBOARDED = 0x04;
+        /// PIN validated
         const PIN_VALIDATED = 0xF0;
     }
 }

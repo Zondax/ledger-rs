@@ -48,14 +48,19 @@ impl Version {
     }
 }
 
+/// Version encoding mode
 #[derive(Copy, Clone, PartialEq, Debug, IntoPrimitive, TryFromPrimitive)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(rename_all="camelCase"))]
 #[repr(u8)]
 pub enum VersionMode {
+    /// Single byte version numbers
     SingleByte = 0x04,
+    /// Two byte version numbers
     DoubleByte = 0x07,
+    /// Single byte version numbers with flags and target_id
     SingleBytePlus = 0x09,
+    /// Two byte version numbers with flags and target_id
     DoubleBytePlus = 0x0c,
 }
 

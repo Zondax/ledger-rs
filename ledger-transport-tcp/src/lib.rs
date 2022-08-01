@@ -75,6 +75,8 @@ impl TransportTcp {
     }
 }
 
+const ADPU_HDR_LEN: usize = 4 + 5;
+
 #[async_trait::async_trait]
 impl Exchange for TransportTcp {
     type Error = Error;
@@ -88,14 +90,21 @@ impl Exchange for TransportTcp {
         let mut s = self.s.lock().await;
 
         // Encode command object
-        let tx_len = command.encode(&mut buff[4..]);
-        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32);
+        let tx_len = command.encode(&mut buff[ADPU_HDR_LEN..]);
 
-        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + 4], tx_len);
+        // Write header
+        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32);
+        buff[5] = CMD::CLA;
+        buff[6] = CMD::INS;
+        buff[7] = command.p1();
+        buff[8] = command.p2();
+        buff[9] = tx_len as u8 + 2;
+
+        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + ADPU_HDR_LEN], tx_len);
 
 
         // Send command
-        s.write(&buff[..tx_len + 4]).await?;
+        s.write(&buff[..tx_len + ADPU_HDR_LEN]).await?;
 
 
         // Await response

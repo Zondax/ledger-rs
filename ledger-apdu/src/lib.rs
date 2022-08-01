@@ -29,7 +29,7 @@ use snafu::prelude::*;
 #[cfg(test)]
 mod tests;
 
-mod apdus;
+pub mod apdus;
 
 mod error;
 pub use error::{ApduError, APDUErrorCode};
