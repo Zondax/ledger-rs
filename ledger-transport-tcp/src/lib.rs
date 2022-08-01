@@ -93,12 +93,12 @@ impl Exchange for TransportTcp {
         let tx_len = command.encode(&mut buff[ADPU_HDR_LEN..]);
 
         // Write header
-        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32);
-        buff[5] = CMD::CLA;
-        buff[6] = CMD::INS;
-        buff[7] = command.p1();
-        buff[8] = command.p2();
-        buff[9] = tx_len as u8 + 2;
+        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32 + 5);
+        buff[4] = CMD::CLA;
+        buff[5] = CMD::INS;
+        buff[6] = command.p1();
+        buff[7] = command.p2();
+        buff[8] = tx_len as u8;
 
         log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + ADPU_HDR_LEN], tx_len);
 
@@ -122,7 +122,7 @@ impl Exchange for TransportTcp {
         // Read response body
         tokio::time::timeout(self.timeout, s.read_exact(&mut buff[..rx_len])).await??;
 
-        log::debug!("Received answer: {:02x?} ({})", buff, rx_len);
+        log::debug!("Received answer: {:02x?} ({})", &buff[..rx_len], rx_len);
 
         // Decode answer ADPU
         let answer = ANS::decode(&buff[..rx_len])
