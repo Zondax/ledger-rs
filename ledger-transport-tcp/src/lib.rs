@@ -15,7 +15,7 @@ use tokio::{
 mod error;
 pub use error::Error;
 
-/// Ledger TCP (speculos) ADPU transport
+/// Ledger TCP (speculos) APDU transport
 pub struct TransportTcp {
     s: Mutex<TcpStream>,
     timeout: Duration,
@@ -25,15 +25,15 @@ pub struct TransportTcp {
 #[derive(Clone, PartialEq, Debug)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 pub struct TcpOptions {
-    /// TCP address for ADPU connection
+    /// TCP address for APDU connection
     #[cfg_attr(feature = "clap", clap(long, default_value_t = TcpOptions::default().addr, env = "TCP_ADDR"))]
     pub addr: IpAddr,
 
-    /// TCP port for ADPU connection
+    /// TCP port for APDU connection
     #[cfg_attr(feature = "clap", clap(long, default_value_t = TcpOptions::default().port, env = "TCP_PORT"))]
     pub port: u16,
 
-    /// ADPU timeout in milliseconds
+    /// APDU timeout in milliseconds
     #[cfg_attr(feature = "clap", clap(default_value_t = TcpOptions::default().timeout_ms, env = "TCP_TIMEOUT_MS"))]
     pub timeout_ms: u64,
 }
@@ -75,13 +75,13 @@ impl TransportTcp {
     }
 }
 
-const ADPU_HDR_LEN: usize = 4 + 5;
+const APDU_HDR_LEN: usize = 4 + 5;
 
 #[async_trait::async_trait]
 impl Exchange for TransportTcp {
     type Error = Error;
 
-    /// Exchange an ADPU with via the TCP transport
+    /// Exchange an APDU with via the TCP transport
     async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
         &self,
         command: CMD,
@@ -90,7 +90,7 @@ impl Exchange for TransportTcp {
         let mut s = self.s.lock().await;
 
         // Encode command object
-        let tx_len = command.encode(&mut buff[ADPU_HDR_LEN..]);
+        let tx_len = command.encode(&mut buff[APDU_HDR_LEN..]);
 
         // Write header
         NetworkEndian::write_u32(&mut buff[..4], tx_len as u32 + 5);
@@ -100,11 +100,11 @@ impl Exchange for TransportTcp {
         buff[7] = command.p2();
         buff[8] = tx_len as u8;
 
-        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + ADPU_HDR_LEN], tx_len);
+        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + APDU_HDR_LEN], tx_len);
 
 
         // Send command
-        s.write(&buff[..tx_len + ADPU_HDR_LEN]).await?;
+        s.write(&buff[..tx_len + APDU_HDR_LEN]).await?;
 
 
         // Await response
@@ -124,13 +124,13 @@ impl Exchange for TransportTcp {
 
         log::debug!("Received answer: {:02x?} ({})", &buff[..rx_len], rx_len);
 
-        // Decode answer ADPU
+        // Decode answer APDU
         let answer = ANS::decode(&buff[..rx_len])
             .map_err(|_| Error::InvalidAnswer)?;
 
         log::debug!("Decoded APDU: {:02x?}", answer);
 
-        // Return ADPU
+        // Return APDU
         Ok(answer) 
     }
 }

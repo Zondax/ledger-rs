@@ -1,7 +1,7 @@
 
 use crate::{ApduCmd, ApduBase, ApduEmpty, ApduError};
 
-/// Application info ADPU command
+/// Application info APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct AppInfoGet {}
 

@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, NetworkEndian};
 
 use crate::{ApduCmd, ApduBase, ApduEmpty, ApduError};
 
-/// Version ADPU command
+/// Version APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct VersionGet<const CLA: u8 = 0x00> {}
 

@@ -1,7 +1,7 @@
 
 use crate::{ApduCmd, ApduBase, ApduEmpty, ApduError};
 
-/// Device info ADPU command
+/// Device info APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct DeviceInfoGet {}
 
