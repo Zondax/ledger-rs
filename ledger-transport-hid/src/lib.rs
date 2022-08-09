@@ -16,14 +16,16 @@
 mod errors;
 pub use errors::LedgerHIDError;
 
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ByteOrder, ReadBytesExt, NetworkEndian};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
-use log::info;
+use log::{info, debug};
 
 use std::{io::Cursor, ops::Deref, sync::Mutex};
 
 pub use hidapi;
-use ledger_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};
+
+use ledger_apdu::{ApduCmd, ApduBase};
+use ledger_transport::{Exchange};
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
@@ -84,6 +86,9 @@ impl TransportNativeHID {
         channel: u16,
         apdu_command: &[u8],
     ) -> Result<i32, LedgerHIDError> {
+
+        debug!("Write APDU data: {:02x?}", apdu_command);
+
         let command_length = apdu_command.len() as usize;
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
@@ -105,7 +110,7 @@ impl TransportNativeHID {
             buffer[5] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
             buffer[6..6 + chunk.len()].copy_from_slice(chunk);
 
-            info!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
+            debug!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
 
             let result = device.write(&buffer);
 
@@ -166,46 +171,66 @@ impl TransportNativeHID {
 
             let new_chunk = &buffer[rdr.position() as usize..end_p];
 
-            info!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            debug!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
 
             apdu_answer.extend_from_slice(new_chunk);
 
             if apdu_answer.len() >= expected_apdu_len {
+                debug!("Received APDU data: {:02x?} {}", &apdu_answer, apdu_answer.len());
+
                 return Ok(apdu_answer.len());
             }
 
             sequence_idx += 1;
         }
     }
-
-    pub fn exchange<I: Deref<Target = [u8]>>(
-        &self,
-        command: &APDUCommand<I>,
-    ) -> Result<APDUAnswer<Vec<u8>>, LedgerHIDError> {
-        let device = self.device.lock().expect("HID device poisoned");
-
-        Self::write_apdu(&device, LEDGER_CHANNEL, &command.serialize())?;
-
-        let mut answer: Vec<u8> = Vec::with_capacity(256);
-        Self::read_apdu(&device, LEDGER_CHANNEL, &mut answer)?;
-
-        APDUAnswer::from_answer(answer).map_err(|_| LedgerHIDError::Comm("response was too short"))
-    }
 }
 
-#[async_trait]
+const APDU_HDR_LEN: usize = 5;
+
+
+#[async_trait::async_trait]
 impl Exchange for TransportNativeHID {
     type Error = LedgerHIDError;
-    type AnswerType = Vec<u8>;
 
-    async fn exchange<I>(
+    /// Exchange an APDU with via the TCP transport
+    async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
         &self,
-        command: &APDUCommand<I>,
-    ) -> Result<APDUAnswer<Self::AnswerType>, Self::Error>
-    where
-        I: Deref<Target = [u8]> + Send + Sync,
-    {
-        self.exchange(command)
+        command: CMD,
+        buff: &'a mut [u8],
+    ) -> Result<ANS, Self::Error> {
+        let device = self.device.lock().expect("HID device poisoned");
+
+        debug!("APDU command: {:?}", command);
+
+        // Encode command object
+        let tx_len = command.encode(&mut buff[APDU_HDR_LEN..]);
+
+        // Write header
+        buff[0] = CMD::CLA;
+        buff[1] = CMD::INS;
+        buff[2] = command.p1();
+        buff[3] = command.p2();
+        buff[4] = tx_len as u8;
+
+        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + APDU_HDR_LEN], tx_len);
+
+        // Write APDU
+        Self::write_apdu(&device, LEDGER_CHANNEL, &buff[..tx_len + APDU_HDR_LEN])?;
+
+        // Read response
+        let mut b = vec![];
+        let rx_len = Self::read_apdu(&device, LEDGER_CHANNEL, &mut b)?;
+        buff[..rx_len].copy_from_slice(&b[..rx_len]);
+
+        // Decode response
+        let answer = ANS::decode(&buff[..rx_len])
+            .map_err(|_| LedgerHIDError::Comm("response was too short"))?;
+
+        log::debug!("Decoded APDU: {:02x?}", answer);
+
+        // Return APDU
+        Ok(answer) 
     }
 }
 

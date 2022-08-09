@@ -18,8 +18,10 @@ cfg-if = "1.0.0"
 thiserror = "1.0"
 hex = "0.4"
 log = "0.4"
+async-trait = "*"
 
 ledger-transport = "0.10"
+ledger-apdu = "*"
 
 hidapi = { version = "1.4.1", features = ["linux-static-hidraw"], default-features = false }
 
