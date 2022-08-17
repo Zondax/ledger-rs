@@ -12,6 +12,8 @@ pub enum ApduError {
     Utf8,
     /// Invalid object length
     InvalidLength,
+    /// Invalid object encoding
+    InvalidEncoding,
 }
 
 

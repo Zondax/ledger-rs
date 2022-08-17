@@ -112,12 +112,12 @@ impl Exchange for TransportTcp {
 
         // Read length header
         let rx_len = match tokio::time::timeout(self.timeout, s.read(&mut buff[..4])).await?? {
-            4 => NetworkEndian::read_u32(&buff[..4]) as usize,
+            /// Length header + status bytes
+            4 => NetworkEndian::read_u32(&buff[..4]) as usize + 2,
             _ => return Err(Error::InvalidLength),
         };
 
         log::debug!("Expected {} byte response", rx_len);
-
 
         // Read response body
         tokio::time::timeout(self.timeout, s.read_exact(&mut buff[..rx_len])).await??;
