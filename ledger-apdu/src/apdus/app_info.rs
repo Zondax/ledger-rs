@@ -1,21 +1,19 @@
 
-use crate::{ApduCmd, ApduBase, ApduEmpty, ApduError};
+use crate::{ApduStatic, ApduBase, ApduError};
 
+use encdec::{Encode, Decode, Error};
 /// Application info APDU command
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Debug, Default, Encode, Decode)]
+#[encdec(error="ApduError")]
 pub struct AppInfoGet {}
 
-impl <'a> ApduCmd<'a> for AppInfoGet {
+impl ApduStatic for AppInfoGet {
     /// Application Info command APDU is class `0xb0`
     const CLA: u8 = 0xb0;
 
     /// Application Info GET APDU is instruction `0x00`
     const INS: u8 = 0x01;
 }
-
-/// [`AppInfoGet`] APDU command has no body
-impl ApduEmpty for AppInfoGet {}
-
 
 /// Application information APDU response
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -54,9 +52,11 @@ impl <'a> AppInfo<'a> {
     }
 }
 
-impl <'a>ApduBase<'a> for AppInfo<'a> {
+impl <'a>Encode for AppInfo<'a> {
+    type Error = ApduError;
+
     /// Encode an app version APDU into the provided buffer
-    fn encode(&self, buff: &mut [u8]) -> usize {
+    fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         // TODO: check buffer length is viable
 
         let mut index = 0;
@@ -75,12 +75,27 @@ impl <'a>ApduBase<'a> for AppInfo<'a> {
         buff[index + 1] = self.flags.bits();
         index += 2;
 
-        return index;
-            
+        Ok(index) 
     }
 
+    /// Compute APDU encoded length
+    fn encode_len(&self) -> Result<usize, ApduError> {
+        let mut len = 4;
+
+        len += 1 + self.name.len();
+        len += 1 + self.version.len();
+        len += 2;
+
+        Ok(len)
+    }
+}
+
+impl <'a>Decode<'a> for AppInfo<'a> {
+    type Output = Self;
+    type Error = ApduError;
+
     /// Decode an app version APDU from the provided buffer
-    fn decode(buff: &'a [u8]) -> Result<Self, ApduError> {
+    fn decode(buff: &'a [u8]) -> Result<(Self, usize), ApduError> {
         let mut index = 0;
         let buff = buff.as_ref();
 
@@ -106,7 +121,7 @@ impl <'a>ApduBase<'a> for AppInfo<'a> {
         let _flags_len = buff[index];
         let flags = AppFlags::from_bits_truncate(buff[index + 1]);
 
-        Ok(Self{ name, version, flags })
+        Ok((Self{ name, version, flags }, index))
     }
 }
 

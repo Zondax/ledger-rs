@@ -32,4 +32,6 @@ pub enum LedgerHIDError {
     /// UT8F error
     #[error("Ledger device: UTF8 error")]
     UTF8(#[from] std::str::Utf8Error),
+    #[error("APDU error {0}")]
+    Apdu(#[from] ledger_apdu::ApduError),
 }

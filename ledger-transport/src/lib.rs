@@ -19,23 +19,68 @@
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
 
+use std::error::Error;
 use core::fmt::Debug;
 
 pub use async_trait::async_trait;
-pub use ledger_apdu::{ApduCmd, ApduBase, APDUErrorCode};
+use byteorder::{NetworkEndian, ByteOrder};
+use ledger_apdu::ApduError;
+pub use ledger_apdu::{ApduCmd, ApduBase, ApduHeader, ApduErrorCode, APDUAnswer, APDUCommand, APDU_HDR_LEN};
 
 /// Use to talk to the ledger device
 #[async_trait]
-pub trait Exchange {
+pub trait Exchange: Send {
     /// Error defined by Transport used
-    type Error: Debug;
+    type Error: Error + Debug;
 
     /// Send a command with the given transport and retrieve an answer or a transport error.
     /// 
-    /// The provided buffer is used for TX and RX operations to mitigate the need for allocation
-    async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
+    /// The provided buffer is used for TX and RX operations to allow use with reference containing objects
+    async fn exchange<'a, 'c, ANS: ApduBase<'a>>(
         &self,
-        command: CMD,
+        command: impl ApduCmd<'c>,
         buff: &'a mut [u8],
     ) -> Result<ANS, Self::Error>;
+
+
+    /// Helper to encode an APDU command to buffer w/ headers for use
+    /// when implementing [`exhange`].
+    /// 
+    /// This may be overwritten where headers must be extended (eg. for the speculos / TCP transport where messages are prefixed by their length)
+    fn apdu_encode<'a, CMD: ApduCmd<'a>>(apdu: &CMD, buff: &mut [u8]) -> Result<usize, ApduError> {
+        // Generate APDU header
+        let hdr = apdu.header();
+
+        // Encode the header
+        hdr.encode(&mut buff[..]);
+
+        // Encode the command
+        let l = apdu.encode(&mut buff[APDU_HDR_LEN..])?;
+
+        // Return encoded length
+        Ok(l + APDU_HDR_LEN)
+    }
+
+    /// Helper to decode APDU responses and return codes, 
+    /// for use when implementing [`exchange`].
+    /// 
+    /// This may be overwritten where headers must be extended (eg. for the speculos / TCP transport where messages are prefixed by their length)
+    fn apdu_decode<'a, ANS: ApduBase<'a>>(buff: &'a [u8]) -> Result<ANS, ApduError> {
+
+        // Fetch response code
+        let retcode = NetworkEndian::read_u16(&buff[buff.len()-2..][..2]);
+
+        // TODO: is there any case in which a message should be decode in spite of
+        // a failing response code?
+        if retcode != ApduErrorCode::NoError as u16 {
+            return Err(ApduError::ErrorCode(retcode));
+        }
+
+        // Decode response message
+        let (answer, _) = ANS::decode(&buff[..buff.len()-2])?;
+
+        // Return answer
+        Ok(answer)
+    }
+
 }

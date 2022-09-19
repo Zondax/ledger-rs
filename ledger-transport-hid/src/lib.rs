@@ -24,7 +24,7 @@ use std::{io::Cursor, ops::Deref, sync::Mutex};
 
 pub use hidapi;
 
-use ledger_apdu::{ApduCmd, ApduBase};
+use ledger_apdu::{ApduCmd, ApduBase, Decode};
 use ledger_transport::{Exchange};
 
 const LEDGER_VID: u16 = 0x2c97;
@@ -186,37 +186,32 @@ impl TransportNativeHID {
     }
 }
 
-const APDU_HDR_LEN: usize = 5;
-
 
 #[async_trait::async_trait]
 impl Exchange for TransportNativeHID {
     type Error = LedgerHIDError;
 
     /// Exchange an APDU with via the TCP transport
-    async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
+    async fn exchange<'a, 'c, ANS: ApduBase<'a>>(
         &self,
-        command: CMD,
+        command: impl ApduCmd<'c>,
         buff: &'a mut [u8],
-    ) -> Result<ANS, Self::Error> {
+    ) -> Result<ANS, Self::Error> 
+    where
+        ANS: ApduBase<'a>,
+        <ANS as Decode<'a>>::Error: Into<Self::Error>,
+    {
         let device = self.device.lock().expect("HID device poisoned");
 
         debug!("APDU command: {:?}", command);
 
         // Encode command object
-        let tx_len = command.encode(&mut buff[APDU_HDR_LEN..]);
+        let tx_len = Self::apdu_encode(&command, &mut buff[..])?;
 
-        // Write header
-        buff[0] = CMD::CLA;
-        buff[1] = CMD::INS;
-        buff[2] = command.p1();
-        buff[3] = command.p2();
-        buff[4] = tx_len as u8;
-
-        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + APDU_HDR_LEN], tx_len);
+        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len], tx_len);
 
         // Write APDU
-        Self::write_apdu(&device, LEDGER_CHANNEL, &buff[..tx_len + APDU_HDR_LEN])?;
+        Self::write_apdu(&device, LEDGER_CHANNEL, &buff[..tx_len])?;
 
         // Read response
         let mut b = vec![];
@@ -224,8 +219,8 @@ impl Exchange for TransportNativeHID {
         buff[..rx_len].copy_from_slice(&b[..rx_len]);
 
         // Decode response
-        let answer = ANS::decode(&buff[..rx_len])
-            .map_err(|_| LedgerHIDError::Comm("response was too short"))?;
+        let answer = Self::apdu_decode::<ANS>(&buff[..rx_len])?;
+
 
         log::debug!("Decoded APDU: {:02x?}", answer);
 
@@ -236,7 +231,8 @@ impl Exchange for TransportNativeHID {
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::{APDUCommand, TransportNativeHID};
+    use crate::{TransportNativeHID};
+    use ledger_transport::APDUCommand;
     use hidapi::HidApi;
     use log::info;
     use once_cell::sync::Lazy;
@@ -313,12 +309,14 @@ mod integration_tests {
             const CLA: u8 = 0;
         }
 
+        let mut buff = [0u8; 256];
+
         init_logging();
 
         let ledger = TransportNativeHID::new(hidapi()).expect("Could not get a device");
 
         // use device info command that works in the dashboard
-        let result = futures::executor::block_on(Dummy::get_device_info(&ledger))
+        let result = futures::executor::block_on(Dummy::get_device_info(&ledger, &mut buff))
             .expect("Error during exchange");
         info!("{:x?}", result);
     }
@@ -333,6 +331,8 @@ mod integration_tests {
             const CLA: u8 = 0;
         }
 
+        let mut buff = [0u8; 256];
+
         init_logging();
 
         let api = hidapi();
@@ -345,8 +345,8 @@ mod integration_tests {
 
         // use device info command that works in the dashboard
         let (r1, r2) = futures::executor::block_on(futures::future::join(
-            Dummy::get_device_info(&t1),
-            Dummy::get_device_info(&t2),
+            Dummy::get_device_info(&t1, &mut buff),
+            Dummy::get_device_info(&t2, &mut buff),
         ));
 
         let (r1, r2) = (

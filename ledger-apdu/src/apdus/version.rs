@@ -1,14 +1,15 @@
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use byteorder::{ByteOrder, NetworkEndian};
+use encdec::{Encode, Decode};
 
-use crate::{ApduCmd, ApduBase, ApduEmpty, ApduError};
+use crate::{ApduStatic, ApduBase, ApduError};
 
 /// Version APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default)]
 pub struct VersionGet<const CLA: u8 = 0x00> {}
 
-impl <'a, const CLA: u8> ApduCmd<'a> for VersionGet<CLA> {
+impl <'a, const CLA: u8> ApduStatic for VersionGet<CLA> {
     /// Version command class defined by application
     const CLA: u8 = CLA;
 
@@ -16,9 +17,27 @@ impl <'a, const CLA: u8> ApduCmd<'a> for VersionGet<CLA> {
     const INS: u8 = 0x00;
 }
 
-/// [`VersionGet`] APDU command has no body
-impl <const CLA: u8> ApduEmpty for VersionGet<CLA> {}
+impl <const CLA: u8> Encode for VersionGet<CLA> {
+    type Error = ApduError;
 
+    fn encode_len(&self) -> Result<usize, Self::Error> {
+        Ok(0)
+    }
+
+    fn encode(&self, _buff: &mut [u8]) -> Result<usize, Self::Error> {
+        Ok(0)
+    }
+}
+
+impl <'a, const CLA: u8> Decode<'a> for VersionGet<CLA> {
+    type Error = ApduError;
+
+    type Output = Self;
+
+    fn decode(_buff: &'a [u8]) -> Result<(Self::Output, usize), Self::Error> {
+        Ok((Self{}, 0))
+    }
+}
 
 /// Application information APDU response
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -64,9 +83,11 @@ pub enum VersionMode {
     DoubleBytePlus = 0x0c,
 }
 
-impl <'a>ApduBase<'a> for Version {
+impl Encode for Version {
+    type Error = ApduError;
+
     /// Encode an app version APDU into the provided buffer
-    fn encode(&self, buff: &mut [u8]) -> usize {
+    fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         // TODO: check buffer length is viable
 
         let mut index = 0;
@@ -107,12 +128,34 @@ impl <'a>ApduBase<'a> for Version {
         };
 
 
-        return index;
+        Ok(index)
             
     }
 
+    /// Compute APDU encoded length
+    fn encode_len(&self) -> Result<usize, ApduError> {
+        let mut len = 1;
+
+        len += match self.mode {
+            VersionMode::SingleByte | VersionMode::SingleBytePlus => 3,
+            VersionMode::DoubleByte | VersionMode::DoubleBytePlus => 6,
+        };
+
+        len += match self.mode {
+            VersionMode::SingleBytePlus | VersionMode::DoubleBytePlus => 5,
+            _ => 0,
+        };
+
+        Ok(len)
+    }
+}
+
+impl <'a> Decode<'a> for Version {
+    type Output = Self;
+    type Error = ApduError;
+    
     /// Decode an app version APDU from the provided buffer
-    fn decode(buff: &'a [u8]) -> Result<Self, ApduError> {
+    fn decode(buff: &'a [u8]) -> Result<(Self::Output, usize), Self::Error> {
         let mut index = 0;
 
         // Parse out mode
@@ -155,8 +198,9 @@ impl <'a>ApduBase<'a> for Version {
             VersionMode::SingleByte | VersionMode::DoubleByte => (false, [0u8; 4]),
         };
 
-        Ok(Self{ mode, major, minor, patch, locked, target_id })
+        Ok((Self{ mode, major, minor, patch, locked, target_id }, index))
     }
+
 }
 
 #[cfg(test)]

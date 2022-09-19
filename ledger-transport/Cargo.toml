@@ -13,5 +13,6 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1"
-
+byteorder = { version = "*", default_features = false }
+encdec = "0.6.1"
 ledger-apdu = "0.10.0"

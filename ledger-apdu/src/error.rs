@@ -1,10 +1,11 @@
-use core::ops::Deref;
-use core::convert::{TryFrom, TryInto};
+use core::convert::{TryFrom};
 
 use snafu::Snafu;
+use strum::{Display, EnumString};
 
 /// APDU encode / decode errors
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Display, EnumString)]
+#[cfg_attr(feature = "thiserror", derive(thiserror::Error))]
 pub enum ApduError {
     /// Invalid version / format identifier
     InvalidVersion(u8),
@@ -14,13 +15,15 @@ pub enum ApduError {
     InvalidLength,
     /// Invalid object encoding
     InvalidEncoding,
+    /// Error response from device (may be an [`ApduErrorCode`])
+    ErrorCode(u16),
 }
 
 
-#[derive(Copy, Clone, Debug, Snafu, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Snafu, PartialEq, Eq, EnumString)]
 #[repr(u16)]
 /// Common known APDU error codes
-pub enum APDUErrorCode {
+pub enum ApduErrorCode {
     ///success
     NoError = 0x9000,
     ///error during apdu execution
@@ -51,21 +54,13 @@ pub enum APDUErrorCode {
     SignVerifyError = 0x6F01,
 }
 
-#[cfg(feature = "std")]
-impl APDUErrorCode {
-    /// Quickhand to retrieve the error code's description / display
-    pub fn description(&self) -> std::string::String {
-        std::format!("{}", self)
-    }
-}
-
-impl From<APDUErrorCode> for u16 {
-    fn from(code: APDUErrorCode) -> Self {
+impl From<ApduErrorCode> for u16 {
+    fn from(code: ApduErrorCode) -> Self {
         code as u16
     }
 }
 
-impl TryFrom<u16> for APDUErrorCode {
+impl TryFrom<u16> for ApduErrorCode {
     type Error = ();
 
     fn try_from(value: u16) -> Result<Self, Self::Error> {
@@ -88,5 +83,14 @@ impl TryFrom<u16> for APDUErrorCode {
         };
 
         Ok(this)
+    }
+}
+
+impl From<encdec::Error> for ApduError {
+    fn from(e: encdec::Error) -> Self {
+        match e {
+            encdec::Error::BufferOverrun => ApduError::InvalidLength,
+            encdec::Error::Utf8Error => ApduError::Utf8,
+        }
     }
 }

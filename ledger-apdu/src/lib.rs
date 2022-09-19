@@ -24,6 +24,7 @@ extern crate no_std_compat as std;
 use core::{ops::Deref, fmt::Debug};
 use core::convert::{TryInto};
 
+use encdec::{EncDec};
 use snafu::prelude::*;
 
 #[cfg(test)]
@@ -32,7 +33,10 @@ mod tests;
 pub mod apdus;
 
 mod error;
-pub use error::{ApduError, APDUErrorCode};
+pub use error::{ApduError, ApduErrorCode};
+
+/// Re-export Encode and Decode traits for consumers / implementers
+pub use encdec::{Encode, Decode};
 
 #[derive(Debug, Clone)]
 /// An APDU command
@@ -107,9 +111,9 @@ where
         self.apdu_data()
     }
 
-    /// Will attempt to interpret the error code as an [APDUErrorCode],
+    /// Will attempt to interpret the error code as an [ApduErrorCode],
     /// returning the code as is otherwise
-    pub fn error_code(&self) -> Result<APDUErrorCode, u16> {
+    pub fn error_code(&self) -> Result<ApduErrorCode, u16> {
         self.retcode.try_into().map_err(|_| self.retcode)
     }
 
@@ -120,50 +124,90 @@ where
     }
 }
 
-/// [`ApduBase`] provides encode/decode methods for APDUs
-pub trait ApduBase<'a>: Send + PartialEq + Debug + Sized {
-    /// Encode an APDU to the provided buffer, returning the length of the encoded data.
-    fn encode(&self, buff: &mut [u8]) -> usize;
+/// [`ApduBase`] marker trait for APDUs
+pub trait ApduBase<'a>: Send + PartialEq + Debug + Encode<Error=ApduError> + Decode<'a, Output=Self, Error=ApduError> {}
 
-    /// Decode an APDU from the provided buffer, returning the decoded object
-    fn decode(buff: &'a [u8]) -> Result<Self, ApduError>;
-}
+impl <'a, T: Send + PartialEq + Debug + Encode<Error=ApduError> + Decode<'a, Output=Self, Error=ApduError>> ApduBase<'a> for T {}
 
 /// [`ApduCmd`] implemented for APDU commands / requests
 pub trait ApduCmd<'a>: ApduBase<'a> {
+    /// Fetch APDU header for encoding
+    fn header(&self) -> ApduHeader;
+}
+
+
+/// [`ApduStatic`] helper for static APDU command definitions
+pub trait ApduStatic {
     /// Class ID for APDU commands
     const CLA: u8;
 
     /// Instruction ID for APDU commands
     const INS: u8;
 
-    /// Fetch P1 value
+    /// Fetch P1 value (defaults to `0`)
     fn p1(&self) -> u8 {
         0
     }
 
-    /// Fetch P2 value
+    /// Fetch P2 value (defaults to `0`)
     fn p2(&self) -> u8 {
         0
     }
 }
 
-/// Marker trait for empty APDUs (automatically implements [`ApduBase`])
-pub trait ApduEmpty: Send + PartialEq + Debug + Default {}
-
-/// Default [`ApduBase`] impl for [`ApduEmpty`] APDUs
-impl <'a, T: ApduEmpty> ApduBase<'a> for T {
-    /// Encode APDU into the provided buffer
-    fn encode(&self, _buff: &mut [u8]) -> usize {
-        0
-    }
-
-    /// Decode APDU from the provided buffer
-    fn decode(_buff: &'a [u8]) -> Result<Self, ApduError> {
-        Ok(Default::default())
+/// Blanked [`ApduCmd`] implementation for [`ApduStatic`] types
+impl <'a, T: ApduBase<'a> + ApduStatic> ApduCmd<'a> for T {
+    fn header(&self) -> ApduHeader {
+        ApduHeader{
+            cla: T::CLA,
+            ins: T::INS,
+            p1: self.p1(),
+            p2: self.p2(),
+            len: self.encode_len().unwrap() as u8,
+        }
     }
 }
+    
 
+/// Length of encoded [`ApduHeader`]
+pub const APDU_HDR_LEN: usize = 5;
+
+/// APDU Header
+pub struct ApduHeader {
+    /// Class
+    pub cla: u8,
+    /// Instruction
+    pub ins: u8,
+    /// Parameter one
+    pub p1: u8,
+    /// Parameter two
+    pub p2: u8,
+    /// Encoded data length
+    pub len: u8,
+}
+
+
+impl ApduHeader {
+    /// Encode header to the provided buffer
+    pub fn encode(&self, buff: &mut [u8]) {
+        buff[0] = self.cla;
+        buff[1] = self.ins;
+        buff[2] = self.p1;
+        buff[3] = self.p2;
+        buff[4] = self.len;
+    }
+
+    /// Decode APDU header from the provided buffer
+    pub fn decode(&self, buff: &[u8]) -> Self {
+        Self{
+            cla: buff[0],
+            ins: buff[1],
+            p1: buff[2],
+            p2: buff[3],
+            len: buff[4],
+        }
+    }
+}
 
 #[cfg(test)]
 pub(crate) mod test {
@@ -172,6 +216,8 @@ pub(crate) mod test {
     /// Helper for APDU encode / decode tests
     pub fn encode_decode_apdu<'a, A: ApduBase<'a>>(buff: &'a mut [u8], apdu: &A) {
         let n = apdu.encode(buff);
+
+        assert_eq!(n, apdu.encode_len());
 
         let decoded = A::decode(&buff[..n]).unwrap();
 

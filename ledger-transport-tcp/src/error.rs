@@ -12,6 +12,9 @@ pub enum Error {
 
     #[error("Invalid answer APDU")]
     InvalidAnswer,
+
+    #[error("APDU Error")]
+    ApduError,
 }
 
 impl From<std::io::Error> for Error {
@@ -23,5 +26,11 @@ impl From<std::io::Error> for Error {
 impl From<tokio::time::error::Elapsed> for Error {
     fn from(_: tokio::time::error::Elapsed) -> Self {
         Error::Timeout
+    }
+}
+
+impl From<ledger_apdu::ApduError> for Error {
+    fn from(_: ledger_apdu::ApduError) -> Self {
+        Self::ApduError
     }
 }

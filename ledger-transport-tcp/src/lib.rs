@@ -4,7 +4,7 @@ use std::{
 };
 
 use byteorder::{ByteOrder, NetworkEndian};
-use ledger_transport::{Exchange, ApduCmd, ApduBase};
+use ledger_transport::{Exchange, ApduCmd, ApduBase, ApduHeader};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -82,29 +82,26 @@ impl Exchange for TransportTcp {
     type Error = Error;
 
     /// Exchange an APDU with via the TCP transport
-    async fn exchange<'a, CMD: ApduCmd<'a>, ANS: ApduBase<'a>>(
+    async fn exchange<'a, 'c, ANS: ApduBase<'a>>(
         &self,
-        command: CMD,
+        command: impl ApduCmd<'c>,
         buff: &'a mut [u8],
     ) -> Result<ANS, Self::Error> {
         let mut s = self.s.lock().await;
 
-        // Encode command object
-        let tx_len = command.encode(&mut buff[APDU_HDR_LEN..]);
+        // Write APDU
+        let mut tx_len = Self::apdu_encode(&command, &mut buff[4..])?;
 
-        // Write header
-        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32 + 5);
-        buff[4] = CMD::CLA;
-        buff[5] = CMD::INS;
-        buff[6] = command.p1();
-        buff[7] = command.p2();
-        buff[8] = tx_len as u8;
+        // Write message length prefix
+        NetworkEndian::write_u32(&mut buff[..4], 4 + tx_len as u32);
+        tx_len += 4;
 
-        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len + APDU_HDR_LEN], tx_len);
+
+        log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len], tx_len);
 
 
         // Send command
-        s.write(&buff[..tx_len + APDU_HDR_LEN]).await?;
+        s.write(&buff[..tx_len]).await?;
 
 
         // Await response
@@ -112,7 +109,7 @@ impl Exchange for TransportTcp {
 
         // Read length header
         let rx_len = match tokio::time::timeout(self.timeout, s.read(&mut buff[..4])).await?? {
-            /// Length header + status bytes
+            // Length header + status bytes
             4 => NetworkEndian::read_u32(&buff[..4]) as usize + 2,
             _ => return Err(Error::InvalidLength),
         };
@@ -125,7 +122,7 @@ impl Exchange for TransportTcp {
         log::debug!("Received answer: {:02x?} ({})", &buff[..rx_len], rx_len);
 
         // Decode answer APDU
-        let answer = ANS::decode(&buff[..rx_len])
+        let (answer, _n) = ANS::decode(&buff[..rx_len])
             .map_err(|_| Error::InvalidAnswer)?;
 
         log::debug!("Decoded APDU: {:02x?}", answer);

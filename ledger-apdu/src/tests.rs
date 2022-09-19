@@ -52,7 +52,7 @@ fn apdu_answer_success() {
     let answer = APDUAnswer::from_answer(APDU_RESPONSE).expect("valid answer length >= 2");
 
     let code = answer.error_code().expect("valid error code");
-    assert_eq!(code, APDUErrorCode::NoError);
+    assert_eq!(code, ApduErrorCode::NoError);
 
     assert_eq!(answer.apdu_data(), &APDU_RESPONSE[..4]);
 }
@@ -62,7 +62,7 @@ fn apdu_answer_vec() {
     let answer = APDUAnswer::from_answer(APDU_RESPONSE.to_vec()).expect("valid answer length >= 2");
 
     let code = answer.error_code().expect("valid error code");
-    assert_eq!(code, APDUErrorCode::NoError);
+    assert_eq!(code, ApduErrorCode::NoError);
 
     assert_eq!(answer.apdu_data(), &APDU_RESPONSE[..4]);
 }
@@ -72,7 +72,7 @@ fn apdu_answer_error() {
     let answer = APDUAnswer::from_answer(&[0x64, 0x00][..]).expect("valid answer length >= 2");
 
     let code = answer.error_code().expect("valid error code");
-    assert_eq!(code, APDUErrorCode::ExecutionError);
+    assert_eq!(code, ApduErrorCode::ExecutionError);
 
     assert_eq!(answer.apdu_data(), &[]);
 }

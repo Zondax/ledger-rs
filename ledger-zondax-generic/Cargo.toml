@@ -16,4 +16,5 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 
 ledger-transport = "0.10"
+ledger-apdu = "0.10"
 async-trait = "0.1"

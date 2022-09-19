@@ -21,7 +21,7 @@ log = "0.4"
 async-trait = "*"
 
 ledger-transport = "0.10"
-ledger-apdu = "*"
+ledger-apdu = "0.10.0"
 
 hidapi = { version = "1.4.1", features = ["linux-static-hidraw"], default-features = false }
 

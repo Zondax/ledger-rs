@@ -12,16 +12,19 @@ keywords = ["ledger", "nano", "blue", "apdu"]
 edition = "2021"
 
 [features]
-std = ["snafu/std", "no-std-compat/std"]
+std = ["snafu/std", "no-std-compat/std", "thiserror" ]
 default = ["std"]
 
 [dependencies]
 arrayref = "0.3.6"
 no-std-compat = "0.4.1"
 snafu = { version = "0.7", features = ["rust_1_46"], default_features = false }
+thiserror = { version = "1.0.35", default_features = false, optional = true }
 bitflags = "1.3.2"
 num_enum = { version = "0.5.7", default_features = false }
 byteorder = { version = "1.4.3", default_features = false }
+strum = { version = "0.24.1", default_features = false, features = [ "derive" ] }
+encdec = "0.6.1"
 
 # Optionally enable serde for APDUs
 serde = { version = "1.0.140", default_features = false, features = [ "derive" ], optional = true }

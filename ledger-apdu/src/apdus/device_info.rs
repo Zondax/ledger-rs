@@ -1,21 +1,20 @@
 
-use crate::{ApduCmd, ApduBase, ApduEmpty, ApduError};
+use encdec::{Encode, Decode};
+
+use crate::{ApduStatic, ApduBase, ApduError};
 
 /// Device info APDU command
-#[derive(Copy, Clone, PartialEq, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Debug, Default, Encode, Decode)]
+#[encdec(error="ApduError")]
 pub struct DeviceInfoGet {}
 
-impl <'a> ApduCmd<'a> for DeviceInfoGet {
+impl ApduStatic for DeviceInfoGet {
     /// Device Info command APDU is class `0xe0`
     const CLA: u8 = 0xe0;
 
     /// Device Info GET APDU is instruction `0x01`
     const INS: u8 = 0x01;
 }
-
-/// [`DeviceInfoGet`] APDU command has no body
-impl ApduEmpty for DeviceInfoGet {}
-
 
 /// Device information APDU response
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -46,9 +45,11 @@ impl <'a> DeviceInfo<'a> {
     }
 }
 
-impl <'a>ApduBase<'a> for DeviceInfo<'a> {
+impl <'a>Encode for DeviceInfo<'a> {
+    type Error = ApduError;
+
     /// Encode an device info APDU into the provided buffer
-    fn encode(&self, buff: &mut [u8]) -> usize {
+    fn encode(&self, buff: &mut [u8]) -> Result<usize, ApduError> {
         // TODO: check buffer length is viable
 
         let mut index = 0;
@@ -73,12 +74,29 @@ impl <'a>ApduBase<'a> for DeviceInfo<'a> {
         index += 1 + self.mcu_version.len();
         
 
-        return index;
+        Ok(index)
             
     }
 
+    /// Compute APDU encoded length
+    fn encode_len(&self) -> Result<usize, ApduError> {
+        let mut len = 4;
+
+        len += 1 + self.se_version.len();
+        len += 1 + self.flag.len();
+        len += 1 + self.mcu_version.len();
+
+        Ok(len)
+    }
+}
+
+
+impl <'a>Decode<'a> for DeviceInfo<'a> {
+    type Output = Self;
+    type Error = ApduError;
+
     /// Decode an device info APDU from the provided buffer
-    fn decode(buff: &'a [u8]) -> Result<Self, ApduError> {
+    fn decode(buff: &'a [u8]) -> Result<(Self, usize), ApduError> {
         let mut index = 0;
         let buff = buff.as_ref();
 
@@ -104,9 +122,13 @@ impl <'a>ApduBase<'a> for DeviceInfo<'a> {
             .map_err(|_| ApduError::Utf8 )?;
         index += 1 + se_version_len;
 
-        Ok(Self{ target_id, se_version, flag, mcu_version })
+        let _ = index;
+
+        Ok((Self{ target_id, se_version, flag, mcu_version }, index))
     }
 }
+
+
 
 #[cfg(test)]
 mod test {    
