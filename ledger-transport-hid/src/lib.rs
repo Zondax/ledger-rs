@@ -345,8 +345,8 @@ mod integration_tests {
 
         // use device info command that works in the dashboard
         let (r1, r2) = futures::executor::block_on(futures::future::join(
-            Dummy::get_device_info(&t1, &mut buff),
-            Dummy::get_device_info(&t2, &mut buff),
+            Dummy::get_device_info(&t1, &mut buff[..]),
+            Dummy::get_device_info(&t2, &mut buff[..]),
         ));
 
         let (r1, r2) = (

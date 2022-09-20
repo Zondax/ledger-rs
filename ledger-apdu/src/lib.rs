@@ -215,12 +215,15 @@ pub(crate) mod test {
 
     /// Helper for APDU encode / decode tests
     pub fn encode_decode_apdu<'a, A: ApduBase<'a>>(buff: &'a mut [u8], apdu: &A) {
-        let n = apdu.encode(buff);
+        let n = apdu.encode(buff)
+            .expect("encode failed");
 
-        assert_eq!(n, apdu.encode_len());
+        assert_eq!(n, apdu.encode_len().expect("encode_len failed"));
 
-        let decoded = A::decode(&buff[..n]).unwrap();
+        let (decoded, n1) = A::decode(&buff[..n])
+            .expect("decode failed");
 
         assert_eq!(apdu, &decoded);
+        assert_eq!(n, n1);
     }
 }
