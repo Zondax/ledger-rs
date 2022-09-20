@@ -331,7 +331,8 @@ mod integration_tests {
             const CLA: u8 = 0;
         }
 
-        let mut buff = [0u8; 256];
+        let mut buff0 = [0u8; 256];
+        let mut buff1 = [0u8; 256];
 
         init_logging();
 
@@ -345,8 +346,8 @@ mod integration_tests {
 
         // use device info command that works in the dashboard
         let (r1, r2) = futures::executor::block_on(futures::future::join(
-            Dummy::get_device_info(&t1, &mut buff[..]),
-            Dummy::get_device_info(&t2, &mut buff[..]),
+            Dummy::get_device_info(&t1, &mut buff0[..]),
+            Dummy::get_device_info(&t2, &mut buff1[..]),
         ));
 
         let (r1, r2) = (

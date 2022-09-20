@@ -80,8 +80,9 @@ impl <'a>Encode for AppInfo<'a> {
 
     /// Compute APDU encoded length
     fn encode_len(&self) -> Result<usize, ApduError> {
-        let mut len = 4;
+        let mut len = 0;
 
+        len += 1;
         len += 1 + self.name.len();
         len += 1 + self.version.len();
         len += 2;
@@ -118,8 +119,9 @@ impl <'a>Decode<'a> for AppInfo<'a> {
         index += 1 + version_len;
 
         // Fetch flags
-        let _flags_len = buff[index];
+        let flags_len = buff[index];
         let flags = AppFlags::from_bits_truncate(buff[index + 1]);
+        index += 1 + flags_len as usize;
 
         Ok((Self{ name, version, flags }, index))
     }

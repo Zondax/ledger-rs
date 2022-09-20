@@ -120,9 +120,7 @@ impl <'a>Decode<'a> for DeviceInfo<'a> {
         let mcu_version_len = buff[index] as usize;
         let mcu_version = core::str::from_utf8(&buff[index + 1..][..mcu_version_len])
             .map_err(|_| ApduError::Utf8 )?;
-        index += 1 + se_version_len;
-
-        let _ = index;
+        index += 1 + mcu_version_len;
 
         Ok((Self{ target_id, se_version, flag, mcu_version }, index))
     }

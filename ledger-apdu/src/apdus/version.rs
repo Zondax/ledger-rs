@@ -193,6 +193,8 @@ impl <'a> Decode<'a> for Version {
                 let locked = buff[index] != 0;
                 let mut target_id = [0u8; 4];
                 target_id.copy_from_slice(&buff[index+1..][..4]);
+
+                index += 5;
                 (locked, target_id)
             },
             VersionMode::SingleByte | VersionMode::DoubleByte => (false, [0u8; 4]),
