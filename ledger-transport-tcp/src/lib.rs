@@ -93,9 +93,8 @@ impl Exchange for TransportTcp {
         let mut tx_len = Self::apdu_encode(&command, &mut buff[4..])?;
 
         // Write message length prefix
-        NetworkEndian::write_u32(&mut buff[..4], 4 + tx_len as u32);
+        NetworkEndian::write_u32(&mut buff[..4], tx_len as u32);
         tx_len += 4;
-
 
         log::debug!("Sending command: {:02x?} ({})", &buff[..tx_len], tx_len);
 
@@ -107,7 +106,7 @@ impl Exchange for TransportTcp {
         // Await response
         log::debug!("Awaiting response...");
 
-        // Read length header
+        // Read length prefix
         let rx_len = match tokio::time::timeout(self.timeout, s.read(&mut buff[..4])).await?? {
             // Length header + status bytes
             4 => NetworkEndian::read_u32(&buff[..4]) as usize + 2,
