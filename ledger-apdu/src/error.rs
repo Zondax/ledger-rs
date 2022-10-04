@@ -89,8 +89,8 @@ impl TryFrom<u16> for ApduErrorCode {
 impl From<encdec::Error> for ApduError {
     fn from(e: encdec::Error) -> Self {
         match e {
-            encdec::Error::BufferOverrun => ApduError::InvalidLength,
-            encdec::Error::Utf8Error => ApduError::Utf8,
+            encdec::Error::Length => ApduError::InvalidLength,
+            encdec::Error::Utf8 => ApduError::Utf8,
         }
     }
 }

@@ -13,7 +13,7 @@ pub use version::*;
 mod device_info;
 pub use device_info::*;
 
-use crate::{ApduBase, ApduCmd, ApduHeader, ApduError};
+use crate::{ApduCmd, ApduHeader, ApduError};
 
 /// Empty APDU for exchanges where no response data is expected
 #[derive(Clone, PartialEq, Default, Debug, Encode, Decode)]

@@ -3,7 +3,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use byteorder::{ByteOrder, NetworkEndian};
 use encdec::{Encode, Decode};
 
-use crate::{ApduStatic, ApduBase, ApduError};
+use crate::{ApduStatic, ApduError};
 
 /// Version APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default)]

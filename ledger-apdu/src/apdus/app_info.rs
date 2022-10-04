@@ -1,7 +1,7 @@
 
-use crate::{ApduStatic, ApduBase, ApduError};
+use crate::{ApduStatic, ApduError};
 
-use encdec::{Encode, Decode, Error};
+use encdec::{Encode, Decode};
 /// Application info APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default, Encode, Decode)]
 #[encdec(error="ApduError")]

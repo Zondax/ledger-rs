@@ -1,7 +1,7 @@
 
 use encdec::{Encode, Decode};
 
-use crate::{ApduStatic, ApduBase, ApduError};
+use crate::{ApduStatic, ApduError};
 
 /// Device info APDU command
 #[derive(Copy, Clone, PartialEq, Debug, Default, Encode, Decode)]

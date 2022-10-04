@@ -24,7 +24,7 @@ extern crate no_std_compat as std;
 use core::{ops::Deref, fmt::Debug};
 use core::convert::{TryInto};
 
-use encdec::{EncDec};
+
 use snafu::prelude::*;
 
 #[cfg(test)]
