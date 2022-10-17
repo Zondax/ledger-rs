@@ -84,3 +84,16 @@ pub trait Exchange: Send {
     }
 
 }
+
+#[async_trait]
+impl <T: Exchange + Send + Sync> Exchange for &T {
+    type Error = <T as Exchange>::Error;
+
+    async fn exchange<'a, 'c, ANS: ApduBase<'a>>(
+        &self,
+        command: impl ApduCmd<'c>,
+        buff: &'a mut [u8],
+    ) -> Result<ANS, Self::Error> {
+        <T as Exchange>::exchange(self, command, buff).await
+    }
+}
