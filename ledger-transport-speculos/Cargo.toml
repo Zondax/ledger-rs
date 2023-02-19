@@ -1,0 +1,21 @@
+[package]
+name = "ledger-transport-speculos"
+description = "Ledger Hardware Wallet - Speculos Transport"
+version = "0.10.0"
+license = "Apache-2.0"
+authors = ["Linfeng Yuan <linfeng@crypto.com>", "Trevor Arjeski <tmarjeski@gmail.com"]
+homepage = "https://github.com/zondax/ledger-rs"
+repository = "https://github.com/zondax/ledger-rs"
+readme = "README.md"
+categories  = ["authentication", "cryptography"]
+keywords = ["ledger", "nano", "blue", "apdu", "zemu"]
+edition = "2021"
+
+[dependencies]
+thiserror = "1.0"
+log = "0.4"
+reqwest = { version = "0.11", features = ["json"]}
+hex = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+
+ledger-transport = "0.10"
