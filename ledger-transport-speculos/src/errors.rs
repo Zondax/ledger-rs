@@ -21,8 +21,8 @@ pub enum LedgerSpeculosError {
     #[error("Ledger connect error")]
     ConnectError,
     /// speculos reponse error
-    #[error("Speculos response error")]
-    ResponseError,
+    #[error("Speculos response error: {0}")]
+    ResponseError(String),
     /// Inner error
     #[error("Ledger inner error")]
     InnerError,

@@ -71,7 +71,7 @@ impl Exchange for TransportSpeculosHttp {
         let resp: Response = HttpClient::new()
             .post(&self.url)
             .headers(headers)
-            .timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(60))
             .json(&request)
             .send()
             .await
@@ -84,17 +84,21 @@ impl Exchange for TransportSpeculosHttp {
         if resp.status().is_success() {
             let result: SpeculosResponse = resp.json().await.map_err(|e| {
                 log::error!("error response: {:?}", e);
-                LedgerSpeculosError::ResponseError
+                LedgerSpeculosError::ResponseError(e.to_string())
             })?;
-            if result.error.is_none() {
-                APDUAnswer::from_answer(hex::decode(result.data).expect("decode error"))
-                    .map_err(|_| LedgerSpeculosError::ResponseError)
-            } else {
-                Err(LedgerSpeculosError::ResponseError)
+            match result.error {
+                Some(error) => Err(LedgerSpeculosError::ResponseError(error)),
+                None => {
+                    log::debug!("success but error response: {result:?}");
+                    APDUAnswer::from_answer(hex::decode(&result.data).expect("decode error"))
+                        .map_err(|_| LedgerSpeculosError::ResponseError(result.data))
+                }
             }
         } else {
             log::error!("error response: {:?}", resp.status());
-            Err(LedgerSpeculosError::ResponseError)
+            Err(LedgerSpeculosError::ResponseError(
+                resp.status().to_string(),
+            ))
         }
     }
 }
