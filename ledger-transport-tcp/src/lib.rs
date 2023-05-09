@@ -4,7 +4,7 @@ use std::{
 };
 
 use byteorder::{ByteOrder, NetworkEndian};
-use ledger_transport::{Exchange, ApduCmd, ApduBase, ApduHeader};
+use ledger_transport::{Exchange, ApduCmd, ApduBase};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -74,8 +74,6 @@ impl TransportTcp {
         })
     }
 }
-
-const APDU_HDR_LEN: usize = 4 + 5;
 
 #[async_trait::async_trait]
 impl Exchange for TransportTcp {

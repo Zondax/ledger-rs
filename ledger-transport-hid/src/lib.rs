@@ -16,11 +16,11 @@
 mod errors;
 pub use errors::LedgerHIDError;
 
-use byteorder::{BigEndian, ByteOrder, ReadBytesExt, NetworkEndian};
+use byteorder::{BigEndian, ReadBytesExt};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
-use log::{info, debug};
+use log::{debug};
 
-use std::{io::Cursor, ops::Deref, sync::Mutex};
+use std::{io::Cursor, sync::Mutex};
 
 pub use hidapi;
 
