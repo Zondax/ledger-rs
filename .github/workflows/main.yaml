@@ -17,7 +17,7 @@ jobs:
       image: zondax/rust-ci:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
       - run: sudo apt-get install -y libudev-dev libusb-1.0-0-dev protobuf-compiler
@@ -47,7 +47,7 @@ jobs:
       image: zondax/rust-ci:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
       - run: sudo apt-get install -y libudev-dev libusb-1.0-0-dev protobuf-compiler
@@ -74,7 +74,7 @@ jobs:
       image: zondax/rust-ci:latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
       - run: sudo apt-get install -y libudev-dev libusb-1.0-0-dev protobuf-compiler
