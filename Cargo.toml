@@ -12,3 +12,9 @@ exclude = []
 [profile.release]
 opt-level = "s"
 overflow-checks = true
+
+[patch.crates-io]
+ledger-apdu = { path = "ledger-apdu" }
+ledger-transport = { path = "ledger-transport" }
+ledger-transport-hid = { path = "ledger-transport-hid" }
+ledger-zondax-generic = { path = "ledger-zondax-generic" }

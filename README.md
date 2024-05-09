@@ -30,3 +30,17 @@ Afterwards, there's a correct order to publish the crates, based on the crate de
 
 Then, the rest of the crates can be published in any order.
 
+``sh
+cargo login
+cargo package -p ledger-apdu
+cargo publish -p ledger-apdu
+
+cargo package -p ledger-transport
+cargo publish -p ledger-transport
+
+cargo package -p ledger-zondax-generic
+cargo publish -p ledger-zondax-generic
+
+cargo package -p ledger-transport-hid
+cargo publish -p ledger-transport-hid
+``

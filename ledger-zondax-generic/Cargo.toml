@@ -15,5 +15,5 @@ edition = "2021"
 serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 
-ledger-transport = { path = "../ledger-transport" }
+ledger-transport = "0.11.0"
 async-trait = "0.1"
