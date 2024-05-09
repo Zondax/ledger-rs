@@ -74,7 +74,7 @@ pub enum APDUAnswerError {
 
 impl<B> APDUAnswer<B>
 where
-    B: std::ops::Deref<Target = [u8]>,
+    B: Deref<Target = [u8]>,
 {
     /// Attempt to interpret the given slice as an APDU answer
     pub fn from_answer(answer: B) -> Result<Self, APDUAnswerError> {
@@ -82,16 +82,13 @@ where
         let retcode = arrayref::array_ref!(answer, answer.len() - 2, 2);
         let retcode = u16::from_be_bytes(*retcode);
 
-        Ok(APDUAnswer {
-            data: answer,
-            retcode,
-        })
+        Ok(APDUAnswer { data: answer, retcode })
     }
 
     /// Will return the answer's payload
     #[inline(always)]
     pub fn apdu_data(&self) -> &[u8] {
-        &self.data[..self.data.len() - 2]
+        &self.data[.. self.data.len() - 2]
     }
 
     /// Will return the answer's payload
@@ -103,7 +100,9 @@ where
     /// Will attempt to interpret the error code as an [APDUErrorCode],
     /// returning the code as is otherwise
     pub fn error_code(&self) -> Result<APDUErrorCode, u16> {
-        self.retcode.try_into().map_err(|_| self.retcode)
+        self.retcode
+            .try_into()
+            .map_err(|_| self.retcode)
     }
 
     /// Returns the raw return code
@@ -149,7 +148,7 @@ pub enum APDUErrorCode {
 
 #[cfg(feature = "std")]
 impl APDUErrorCode {
-    /// Quickhand to retrieve the error code's description / display
+    /// Quick-hand to retrieve the error code's description / display
     pub fn description(&self) -> std::string::String {
         std::format!("{}", self)
     }

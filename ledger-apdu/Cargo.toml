@@ -1,7 +1,7 @@
 [package]
 name = "ledger-apdu"
 description = "Ledger Hardware Wallet - Common APDU Protocol Types"
-version = "0.10.0"
+version = "0.11.0"
 license = "Apache-2.0"
 authors = ["Zondax AG <hello@zondax.ch>"]
 homepage = "https://github.com/zondax/ledger-rs"
@@ -16,6 +16,6 @@ std = ["snafu/std", "no-std-compat/std"]
 default = ["std"]
 
 [dependencies]
-arrayref = "0.3.6"
-no-std-compat = "0.4.1"
-snafu = { version = "0.7", features = ["rust_1_46"], default-features = false }
+arrayref = "0.3"
+no-std-compat = "0.4"
+snafu = { version = "0.8", default-features = false }

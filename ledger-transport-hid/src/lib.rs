@@ -14,16 +14,14 @@
 *  limitations under the License.
 ********************************************************************************/
 mod errors;
-pub use errors::LedgerHIDError;
-
-use byteorder::{BigEndian, ReadBytesExt};
-use hidapi::{DeviceInfo, HidApi, HidDevice};
-use log::info;
-
 use std::{io::Cursor, ops::Deref, sync::Mutex};
 
+use byteorder::{BigEndian, ReadBytesExt};
+pub use errors::LedgerHIDError;
 pub use hidapi;
+use hidapi::{DeviceInfo, HidApi, HidDevice};
 use ledger_transport::{async_trait, APDUAnswer, APDUCommand, Exchange};
+use log::info;
 
 const LEDGER_VID: u16 = 0x2c97;
 const LEDGER_USAGE_PAGE: u16 = 0xFFA0;
@@ -45,7 +43,8 @@ impl TransportNativeHID {
 
     /// Get a list of ledger devices available
     pub fn list_ledgers(api: &HidApi) -> impl Iterator<Item = &DeviceInfo> {
-        api.device_list().filter(|dev| Self::is_ledger(dev))
+        api.device_list()
+            .filter(|dev| Self::is_ledger(dev))
     }
 
     /// Create a new HID transport, connecting to the first ledger found
@@ -68,13 +67,14 @@ impl TransportNativeHID {
     /// # Warning
     /// Opening the same device concurrently will lead to device lock after the first handle is closed
     /// see [issue](https://github.com/ruabmbua/hidapi-rs/issues/81)
-    pub fn open_device(api: &HidApi, device: &DeviceInfo) -> Result<Self, LedgerHIDError> {
+    pub fn open_device(
+        api: &HidApi,
+        device: &DeviceInfo,
+    ) -> Result<Self, LedgerHIDError> {
         let device = device.open_device(api)?;
         let _ = device.set_blocking_mode(true);
 
-        let ledger = TransportNativeHID {
-            device: Mutex::new(device),
-        };
+        let ledger = TransportNativeHID { device: Mutex::new(device) };
 
         Ok(ledger)
     }
@@ -84,7 +84,7 @@ impl TransportNativeHID {
         channel: u16,
         apdu_command: &[u8],
     ) -> Result<i32, LedgerHIDError> {
-        let command_length = apdu_command.len() as usize;
+        let command_length = apdu_command.len();
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
         in_data.push((command_length & 0xFF) as u8);
@@ -103,7 +103,7 @@ impl TransportNativeHID {
         {
             buffer[4] = ((sequence_idx >> 8) & 0xFF) as u8; // sequence_idx big endian
             buffer[5] = (sequence_idx & 0xFF) as u8; // sequence_idx big endian
-            buffer[6..6 + chunk.len()].copy_from_slice(chunk);
+            buffer[6 .. 6 + chunk.len()].copy_from_slice(chunk);
 
             info!("[{:3}] << {:}", buffer.len(), hex::encode(&buffer));
 
@@ -112,11 +112,9 @@ impl TransportNativeHID {
             match result {
                 Ok(size) => {
                     if size < buffer.len() {
-                        return Err(LedgerHIDError::Comm(
-                            "USB write error. Could not send whole message",
-                        ));
+                        return Err(LedgerHIDError::Comm("USB write error. Could not send whole message"));
                     }
-                }
+                },
                 Err(x) => return Err(LedgerHIDError::Hid(x)),
             }
         }
@@ -164,9 +162,9 @@ impl TransportNativeHID {
             let missing: usize = expected_apdu_len - apdu_answer.len();
             let end_p = rdr.position() as usize + std::cmp::min(available, missing);
 
-            let new_chunk = &buffer[rdr.position() as usize..end_p];
+            let new_chunk = &buffer[rdr.position() as usize .. end_p];
 
-            info!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            info!("[{:3}] << {:}", new_chunk.len(), hex::encode(new_chunk));
 
             apdu_answer.extend_from_slice(new_chunk);
 
@@ -182,7 +180,10 @@ impl TransportNativeHID {
         &self,
         command: &APDUCommand<I>,
     ) -> Result<APDUAnswer<Vec<u8>>, LedgerHIDError> {
-        let device = self.device.lock().expect("HID device poisoned");
+        let device = self
+            .device
+            .lock()
+            .expect("HID device poisoned");
 
         Self::write_apdu(&device, LEDGER_CHANNEL, &command.serialize())?;
 
@@ -211,14 +212,17 @@ impl Exchange for TransportNativeHID {
 
 #[cfg(test)]
 mod integration_tests {
-    use crate::{APDUCommand, TransportNativeHID};
     use hidapi::HidApi;
     use log::info;
     use once_cell::sync::Lazy;
     use serial_test::serial;
 
+    use crate::{APDUCommand, TransportNativeHID};
+
     fn init_logging() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::builder()
+            .is_test(true)
+            .try_init();
     }
 
     fn hidapi() -> &'static HidApi {
@@ -241,8 +245,12 @@ mod integration_tests {
                 device_info.product_id(),
                 device_info.usage_page(),
                 device_info.interface_number(),
-                device_info.manufacturer_string().unwrap_or_default(),
-                device_info.product_string().unwrap_or_default()
+                device_info
+                    .manufacturer_string()
+                    .unwrap_or_default(),
+                device_info
+                    .product_string()
+                    .unwrap_or_default()
             );
         }
     }
@@ -253,9 +261,11 @@ mod integration_tests {
         init_logging();
         let api = hidapi();
 
-        let mut ledgers = TransportNativeHID::list_ledgers(&api);
+        let mut ledgers = TransportNativeHID::list_ledgers(api);
 
-        let a_ledger = ledgers.next().expect("could not find any ledger device");
+        let a_ledger = ledgers
+            .next()
+            .expect("could not find any ledger device");
         info!("{:?}", a_ledger.path());
     }
 
@@ -264,13 +274,7 @@ mod integration_tests {
     fn serialize() {
         let data = vec![0, 0, 0, 1, 0, 0, 0, 1];
 
-        let command = APDUCommand {
-            cla: 0x56,
-            ins: 0x01,
-            p1: 0x00,
-            p2: 0x00,
-            data,
-        };
+        let command = APDUCommand { cla: 0x56, ins: 0x01, p1: 0x00, p2: 0x00, data };
 
         let serialized_command = command.serialize();
 
@@ -293,8 +297,7 @@ mod integration_tests {
         let ledger = TransportNativeHID::new(hidapi()).expect("Could not get a device");
 
         // use device info command that works in the dashboard
-        let result = futures::executor::block_on(Dummy::get_device_info(&ledger))
-            .expect("Error during exchange");
+        let result = futures::executor::block_on(Dummy::get_device_info(&ledger)).expect("Error during exchange");
         info!("{:x?}", result);
     }
 
@@ -311,7 +314,7 @@ mod integration_tests {
         init_logging();
 
         let api = hidapi();
-        let ledger = TransportNativeHID::list_ledgers(&api)
+        let ledger = TransportNativeHID::list_ledgers(api)
             .next()
             .expect("could not get a device");
 
@@ -324,10 +327,7 @@ mod integration_tests {
             Dummy::get_device_info(&t2),
         ));
 
-        let (r1, r2) = (
-            r1.expect("error during exchange (t1)"),
-            r2.expect("error during exchange (t2)"),
-        );
+        let (r1, r2) = (r1.expect("error during exchange (t1)"), r2.expect("error during exchange (t2)"));
 
         info!("r1: {:x?}", r1);
         info!("r2: {:x?}", r2);

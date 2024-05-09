@@ -22,13 +22,12 @@
 #![deny(missing_docs)]
 
 mod errors;
-pub use errors::*;
-
-use serde::{Deserialize, Serialize};
 use std::str;
 
 use async_trait::async_trait;
+pub use errors::*;
 use ledger_transport::{APDUAnswer, APDUCommand, APDUErrorCode, Exchange};
+use serde::{Deserialize, Serialize};
 
 const INS_GET_VERSION: u8 = 0x00;
 const CLA_APP_INFO: u8 = 0xb0;
@@ -129,41 +128,35 @@ where
     ///
     /// Works only in the dashboard
     async fn get_device_info(transport: &E) -> Result<DeviceInfo, LedgerAppError<E::Error>> {
-        let command = APDUCommand {
-            cla: CLA_DEVICE_INFO,
-            ins: INS_DEVICE_INFO,
-            p1: 0x00,
-            p2: 0x00,
-            data: Vec::new(),
-        };
+        let command = APDUCommand { cla: CLA_DEVICE_INFO, ins: INS_DEVICE_INFO, p1: 0x00, p2: 0x00, data: Vec::new() };
 
         let response = transport.exchange(&command).await?;
         match response.error_code() {
-            Ok(APDUErrorCode::NoError) => {}
+            Ok(APDUErrorCode::NoError) => {},
             Ok(err) => return Err(LedgerAppError::Unknown(err as _)),
             Err(err) => return Err(LedgerAppError::Unknown(err)),
         }
 
         let response_data = response.data();
 
-        let target_id_slice = &response_data[0..4];
+        let target_id_slice = &response_data[0 .. 4];
         let mut idx = 4;
         let se_version_len: usize = response_data[idx] as usize;
         idx += 1;
-        let se_version_bytes = &response_data[idx..idx + se_version_len];
+        let se_version_bytes = &response_data[idx .. idx + se_version_len];
 
         idx += se_version_len;
 
         let flags_len: usize = response_data[idx] as usize;
         idx += 1;
-        let flag = &response_data[idx..idx + flags_len];
+        let flag = &response_data[idx .. idx + flags_len];
         idx += flags_len;
 
         let mcu_version_len: usize = response_data[idx] as usize;
         idx += 1;
-        let mut tmp = &response_data[idx..idx + mcu_version_len];
+        let mut tmp = &response_data[idx .. idx + mcu_version_len];
         if tmp[mcu_version_len - 1] == 0 {
-            tmp = &response_data[idx..idx + mcu_version_len - 1];
+            tmp = &response_data[idx .. idx + mcu_version_len - 1];
         }
 
         let mut target_id = [Default::default(); 4];
@@ -186,17 +179,11 @@ where
     ///
     /// Works only in app (TOOD: dashboard support)
     async fn get_app_info(transport: &E) -> Result<AppInfo, LedgerAppError<E::Error>> {
-        let command = APDUCommand {
-            cla: CLA_APP_INFO,
-            ins: INS_APP_INFO,
-            p1: 0x00,
-            p2: 0x00,
-            data: Vec::new(),
-        };
+        let command = APDUCommand { cla: CLA_APP_INFO, ins: INS_APP_INFO, p1: 0x00, p2: 0x00, data: Vec::new() };
 
         let response = transport.exchange(&command).await?;
         match response.error_code() {
-            Ok(APDUErrorCode::NoError) => {}
+            Ok(APDUErrorCode::NoError) => {},
             Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
             Err(err) => return Err(LedgerAppError::Unknown(err as _)),
         }
@@ -208,12 +195,12 @@ where
         }
 
         let app_name_len: usize = response_data[1] as usize;
-        let app_name_bytes = &response_data[2..app_name_len];
+        let app_name_bytes = &response_data[2 .. app_name_len];
 
         let mut idx = 2 + app_name_len;
         let app_version_len: usize = response_data[idx] as usize;
         idx += 1;
-        let app_version_bytes = &response_data[idx..idx + app_version_len];
+        let app_version_bytes = &response_data[idx .. idx + app_version_len];
 
         idx += app_version_len;
 
@@ -240,17 +227,11 @@ where
 
     /// Retrieve the app version
     async fn get_version(transport: &E) -> Result<Version, LedgerAppError<E::Error>> {
-        let command = APDUCommand {
-            cla: Self::CLA,
-            ins: INS_GET_VERSION,
-            p1: 0x00,
-            p2: 0x00,
-            data: Vec::new(),
-        };
+        let command = APDUCommand { cla: Self::CLA, ins: INS_GET_VERSION, p1: 0x00, p2: 0x00, data: Vec::new() };
 
         let response = transport.exchange(&command).await?;
         match response.error_code() {
-            Ok(APDUErrorCode::NoError) => {}
+            Ok(APDUErrorCode::NoError) => {},
             Ok(err) => return Err(LedgerAppError::Unknown(err as _)),
             Err(err) => return Err(LedgerAppError::Unknown(err)),
         }
@@ -283,12 +264,7 @@ where
                 minor: response_data[2] as u16,
                 patch: response_data[3] as u16,
                 locked: response_data[4] != 0,
-                target_id: [
-                    response_data[5],
-                    response_data[6],
-                    response_data[7],
-                    response_data[8],
-                ],
+                target_id: [response_data[5], response_data[6], response_data[7], response_data[8]],
             },
             // double byte version numbers + lock + target id
             12 => Version {
@@ -297,12 +273,7 @@ where
                 minor: response_data[3] as u16 * 256 + response_data[4] as u16,
                 patch: response_data[5] as u16 * 256 + response_data[6] as u16,
                 locked: response_data[7] != 0,
-                target_id: [
-                    response_data[8],
-                    response_data[9],
-                    response_data[10],
-                    response_data[11],
-                ],
+                target_id: [response_data[8], response_data[9], response_data[10], response_data[11]],
             },
             _ => return Err(LedgerAppError::InvalidVersion),
         };
@@ -328,7 +299,7 @@ where
 
         let mut response = transport.exchange(&command).await?;
         match response.error_code() {
-            Ok(APDUErrorCode::NoError) => {}
+            Ok(APDUErrorCode::NoError) => {},
             Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
             Err(err) => return Err(LedgerAppError::Unknown(err as _)),
         }
@@ -341,17 +312,11 @@ where
                 p1 = ChunkPayloadType::Last as u8
             }
 
-            let command = APDUCommand {
-                cla: command.cla,
-                ins: command.ins,
-                p1,
-                p2: 0,
-                data: chunk.to_vec(),
-            };
+            let command = APDUCommand { cla: command.cla, ins: command.ins, p1, p2: 0, data: chunk.to_vec() };
 
             response = transport.exchange(&command).await?;
             match response.error_code() {
-                Ok(APDUErrorCode::NoError) => {}
+                Ok(APDUErrorCode::NoError) => {},
                 Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
                 Err(err) => return Err(LedgerAppError::Unknown(err as _)),
             }
