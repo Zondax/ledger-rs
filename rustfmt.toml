@@ -1,0 +1,38 @@
+# rustfmt.toml example for strict formatting
+
+# General
+edition = "2021" # Target edition of Rust
+max_width = 120 # Max width of each line
+hard_tabs = false # Use spaces instead of tabs
+tab_spaces = 4 # Number of spaces per tab
+newline_style = "Unix" # Line ending style
+use_small_heuristics = "Max" # Be aggressive with formatting small items
+
+# Imports
+reorder_imports = true # Reorder import statements
+reorder_modules = true # Reorder module declarations
+group_imports = "StdExternalCrate" # Group imports by type
+
+# Spaces around punctuation
+spaces_around_ranges = true # Spaces around range operators for readability
+space_before_colon = false # No space before colons
+space_after_colon = true # Space after colons
+
+# Blank lines
+blank_lines_upper_bound = 1 # Max blank lines in a row
+blank_lines_lower_bound = 0 # Min blank lines in a row
+
+# Control flow
+brace_style = "SameLineWhere" # Opening brace on the same line
+control_brace_style = "AlwaysSameLine" # Control flow braces on the same line
+
+# Function calls and definitions
+fn_params_layout = "Vertical" # Function arguments layout to favor visual alignment
+
+# Structs, enums, and unions
+struct_variant_width = 18 # Max width of struct variants before falling back to vertical formatting, corrected to integer
+
+# Misc
+match_block_trailing_comma = true # Trailing comma in match blocks for easier editing
+chain_width = 40 # Max width for a chain of method calls before breaking to enhance readability
+overflow_delimited_expr = true # Allow certain expressions to overflow delimiters
