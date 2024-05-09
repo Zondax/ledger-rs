@@ -24,11 +24,11 @@ jobs:
       - name: show versions
         run: |
           rustup show
-
+      - name: Install rustfmt
+        run: rustup component add rustfmt --toolchain nightly
       - name: rustfmt
         run: |
           cargo +nightly fmt -- --check
-
       - name: rust cache
         uses: Swatinem/rust-cache@v1
         with:
