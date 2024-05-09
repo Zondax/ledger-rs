@@ -1,5 +1,2 @@
 [advisories]
-ignore = ["RUSTSEC-2021-0124", #tokio oneshot channel data race
-            "RUSTSEC-2021-0078", #hyper, server-side only
-            "RUSTSEC-2021-0079" #hyper, client+server side
-        ]
+ignore = []
