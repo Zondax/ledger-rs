@@ -84,7 +84,7 @@ impl TransportNativeHID {
         channel: u16,
         apdu_command: &[u8],
     ) -> Result<i32, LedgerHIDError> {
-        let command_length = apdu_command.len() as usize;
+        let command_length = apdu_command.len();
         let mut in_data = Vec::with_capacity(command_length + 2);
         in_data.push(((command_length >> 8) & 0xFF) as u8);
         in_data.push((command_length & 0xFF) as u8);
@@ -164,7 +164,7 @@ impl TransportNativeHID {
 
             let new_chunk = &buffer[rdr.position() as usize .. end_p];
 
-            info!("[{:3}] << {:}", new_chunk.len(), hex::encode(&new_chunk));
+            info!("[{:3}] << {:}", new_chunk.len(), hex::encode(new_chunk));
 
             apdu_answer.extend_from_slice(new_chunk);
 
@@ -261,7 +261,7 @@ mod integration_tests {
         init_logging();
         let api = hidapi();
 
-        let mut ledgers = TransportNativeHID::list_ledgers(&api);
+        let mut ledgers = TransportNativeHID::list_ledgers(api);
 
         let a_ledger = ledgers
             .next()
@@ -314,7 +314,7 @@ mod integration_tests {
         init_logging();
 
         let api = hidapi();
-        let ledger = TransportNativeHID::list_ledgers(&api)
+        let ledger = TransportNativeHID::list_ledgers(api)
             .next()
             .expect("could not get a device");
 

@@ -27,8 +27,7 @@ jobs:
 
       - name: rustfmt
         run: |
-          cargo fmt --version
-          cargo fmt -- --check
+          cargo +nightly fmt -- --check
 
       - name: rust cache
         uses: Swatinem/rust-cache@v1
