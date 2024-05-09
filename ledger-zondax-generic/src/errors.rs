@@ -62,6 +62,6 @@ pub enum LedgerAppError<E: std::error::Error> {
     #[error("App Error: | {0} {1}")]
     AppSpecific(u16, String),
     ///Unknown error has occurred
-    #[error("Uknown error: {0}")]
+    #[error("Unknown error: {0}")]
     Unknown(u16),
 }

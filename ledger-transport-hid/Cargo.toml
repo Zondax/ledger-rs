@@ -1,7 +1,7 @@
 [package]
 name = "ledger-transport-hid"
 description = "Ledger Hardware Wallet - HID Transport"
-version = "0.10.0"
+version = "0.11.0"
 license = "Apache-2.0"
 authors = ["Zondax AG <hello@zondax.ch>"]
 homepage = "https://github.com/zondax/ledger-rs"
@@ -13,19 +13,18 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2"
-byteorder = "1.4"
-cfg-if = "1.0.0"
-thiserror = "1.0"
+byteorder = "1.5"
+cfg-if = "1"
+thiserror = "1"
 hex = "0.4"
 log = "0.4"
 
-ledger-transport = "0.10"
-
-hidapi = { version = "1.4.1", features = ["linux-static-hidraw"], default-features = false }
+ledger-transport = { path = "../ledger-transport" }
+hidapi = { version = "2.6.1", features = ["linux-static-hidraw"], default-features = false }
 
 [dev-dependencies]
 once_cell = "1"
-ledger-zondax-generic = "0.10"
-serial_test = "0.7.0"
-env_logger = "0.9"
+ledger-zondax-generic = { path = "../ledger-zondax-generic" }
+serial_test = "3"
+env_logger = "0.11"
 futures = "0.3"

@@ -74,7 +74,7 @@ pub enum APDUAnswerError {
 
 impl<B> APDUAnswer<B>
 where
-    B: std::ops::Deref<Target = [u8]>,
+    B: Deref<Target = [u8]>,
 {
     /// Attempt to interpret the given slice as an APDU answer
     pub fn from_answer(answer: B) -> Result<Self, APDUAnswerError> {
@@ -149,7 +149,7 @@ pub enum APDUErrorCode {
 
 #[cfg(feature = "std")]
 impl APDUErrorCode {
-    /// Quickhand to retrieve the error code's description / display
+    /// Quick-hand to retrieve the error code's description / display
     pub fn description(&self) -> std::string::String {
         std::format!("{}", self)
     }
