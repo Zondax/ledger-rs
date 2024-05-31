@@ -124,6 +124,37 @@ where
     E: Exchange + Send + Sync,
     E::Error: std::error::Error,
 {
+    /// Handles the error response from APDU exchange.
+    ///
+    /// # Arguments
+    /// * `response` - The response from the APDU exchange.
+    ///
+    /// # Returns
+    /// A result indicating success or containing a specific ledger application error.
+    fn handle_response_error(response: &APDUAnswer<E::AnswerType>) -> Result<(), LedgerAppError<E::Error>> {
+        match response.error_code() {
+            Ok(APDUErrorCode::NoError) => Ok(()),
+            Ok(err) => Err(LedgerAppError::AppSpecific(err as _, err.description())),
+            Err(err) => Err(LedgerAppError::Unknown(err)),
+        }
+    }
+
+    /// Handles the error response from APDU exchange.
+    ///
+    /// # Arguments
+    /// * `response` - The response from the APDU exchange.
+    ///
+    /// # Returns
+    /// A result indicating success or containing a specific ledger application error.
+    fn handle_response_error_signature(response: &APDUAnswer<E::AnswerType>) -> Result<(), LedgerAppError<E::Error>> {
+        match response.error_code() {
+            Ok(APDUErrorCode::NoError) if response.data().is_empty() => Err(LedgerAppError::NoSignature),
+            Ok(APDUErrorCode::NoError) => Ok(()),
+            Ok(err) => Err(LedgerAppError::AppSpecific(err as _, err.description())),
+            Err(err) => Err(LedgerAppError::AppSpecific(err, "[APDU_ERROR] Unknown".to_string())),
+        }
+    }
+
     /// Retrieve the device info
     ///
     /// Works only in the dashboard
@@ -280,7 +311,17 @@ where
         Ok(version)
     }
 
-    /// Stream a long request in chunks
+    /// Stream a long request in chunks, with an option to set P2 for all chunks.
+    /// This method combines the functionality of sending chunks with or without P2 set for all chunks.
+    ///
+    /// # Arguments
+    /// * `transport` - The transport layer used for communication.
+    /// * `command` - The initial APDU command.
+    /// * `message` - The message to be sent in chunks.
+    /// * `set_p2_for_all` - A boolean to determine if P2 should be set for all chunks.
+    ///
+    /// # Returns
+    /// A result containing the final APDU answer or a ledger application error.
     async fn send_chunks<I: std::ops::Deref<Target = [u8]> + Send + Sync>(
         transport: &E,
         command: APDUCommand<I>,
@@ -298,28 +339,20 @@ where
         }
 
         let mut response = transport.exchange(&command).await?;
-        match response.error_code() {
-            Ok(APDUErrorCode::NoError) => {},
-            Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
-            Err(err) => return Err(LedgerAppError::Unknown(err as _)),
-        }
+        Self::handle_response_error(&response)?;
 
         // Send message chunks
         let last_chunk_index = chunks.len() - 1;
         for (packet_idx, chunk) in chunks.enumerate() {
             let mut p1 = ChunkPayloadType::Add as u8;
             if packet_idx == last_chunk_index {
-                p1 = ChunkPayloadType::Last as u8
+                p1 = ChunkPayloadType::Last as u8;
             }
 
-            let command = APDUCommand { cla: command.cla, ins: command.ins, p1, p2: 0, data: chunk.to_vec() };
+            let command = APDUCommand { cla: command.cla, ins: command.ins, p1, p2: command.p2, data: chunk.to_vec() };
 
             response = transport.exchange(&command).await?;
-            match response.error_code() {
-                Ok(APDUErrorCode::NoError) => {},
-                Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
-                Err(err) => return Err(LedgerAppError::Unknown(err as _)),
-            }
+            Self::handle_response_error(&response)?;
         }
 
         Ok(response)
