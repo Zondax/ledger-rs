@@ -28,6 +28,7 @@ use async_trait::async_trait;
 pub use errors::*;
 use ledger_transport::{APDUAnswer, APDUCommand, APDUErrorCode, Exchange};
 use serde::{Deserialize, Serialize};
+use core::ops::Deref;
 
 const INS_GET_VERSION: u8 = 0x00;
 const CLA_APP_INFO: u8 = 0xb0;
@@ -115,6 +116,43 @@ pub trait App {
     const CLA: u8;
 }
 
+/// Handles the error response from APDU exchange.
+///
+/// # Arguments
+/// * `response` - The response from the APDU exchange.
+///
+/// # Returns
+/// A result indicating success or containing a specific ledger application error.
+fn handle_response_error<T, Err>(response: &APDUAnswer<T>) -> Result<(), LedgerAppError<Err>>
+where
+    Err: std::error::Error, T: Deref
+{
+    match response.error_code() {
+        Ok(APDUErrorCode::NoError) => Ok(()),
+        Ok(err) => Err(LedgerAppError::AppSpecific(err as _, err.description())),
+        Err(err) => Err(LedgerAppError::Unknown(err)),
+    }
+}
+
+/// Handles the error response from APDU exchange when expecting a signature.
+///
+/// # Arguments
+/// * `response` - The response from the APDU exchange.
+///
+/// # Returns
+/// A result indicating success or containing a specific ledger application error.
+fn handle_response_error_signature<T, Err>(response: &APDUAnswer<T>) -> Result<(), LedgerAppError<Err>>
+where
+    Err: std::error::Error,
+{
+    match response.error_code() {
+        Ok(APDUErrorCode::NoError) if response.data().is_empty() => Err(LedgerAppError::NoSignature),
+        Ok(APDUErrorCode::NoError) => Ok(()),
+        Ok(err) => Err(LedgerAppError::AppSpecific(err as _, err.description())),
+        Err(err) => Err(LedgerAppError::AppSpecific(err, "[APDU_ERROR] Unknown".to_string())),
+    }
+}
+
 #[async_trait]
 /// Common commands for any given APP
 ///
@@ -124,37 +162,6 @@ where
     E: Exchange + Send + Sync,
     E::Error: std::error::Error,
 {
-    /// Handles the error response from APDU exchange.
-    ///
-    /// # Arguments
-    /// * `response` - The response from the APDU exchange.
-    ///
-    /// # Returns
-    /// A result indicating success or containing a specific ledger application error.
-    fn handle_response_error(response: &APDUAnswer<E::AnswerType>) -> Result<(), LedgerAppError<E::Error>> {
-        match response.error_code() {
-            Ok(APDUErrorCode::NoError) => Ok(()),
-            Ok(err) => Err(LedgerAppError::AppSpecific(err as _, err.description())),
-            Err(err) => Err(LedgerAppError::Unknown(err)),
-        }
-    }
-
-    /// Handles the error response from APDU exchange.
-    ///
-    /// # Arguments
-    /// * `response` - The response from the APDU exchange.
-    ///
-    /// # Returns
-    /// A result indicating success or containing a specific ledger application error.
-    fn handle_response_error_signature(response: &APDUAnswer<E::AnswerType>) -> Result<(), LedgerAppError<E::Error>> {
-        match response.error_code() {
-            Ok(APDUErrorCode::NoError) if response.data().is_empty() => Err(LedgerAppError::NoSignature),
-            Ok(APDUErrorCode::NoError) => Ok(()),
-            Ok(err) => Err(LedgerAppError::AppSpecific(err as _, err.description())),
-            Err(err) => Err(LedgerAppError::AppSpecific(err, "[APDU_ERROR] Unknown".to_string())),
-        }
-    }
-
     /// Retrieve the device info
     ///
     /// Works only in the dashboard
@@ -322,7 +329,7 @@ where
     ///
     /// # Returns
     /// A result containing the final APDU answer or a ledger application error.
-    async fn send_chunks<I: std::ops::Deref<Target = [u8]> + Send + Sync>(
+    async fn send_chunks<I: Deref<Target = [u8]> + Send + Sync>(
         transport: &E,
         command: APDUCommand<I>,
         message: &[u8],
@@ -339,7 +346,7 @@ where
         }
 
         let mut response = transport.exchange(&command).await?;
-        Self::handle_response_error(&response)?;
+        handle_response_error(&response)?;
 
         // Send message chunks
         let last_chunk_index = chunks.len() - 1;
@@ -352,7 +359,7 @@ where
             let command = APDUCommand { cla: command.cla, ins: command.ins, p1, p2: command.p2, data: chunk.to_vec() };
 
             response = transport.exchange(&command).await?;
-            Self::handle_response_error(&response)?;
+            handle_response_error(&response)?;
         }
 
         Ok(response)
